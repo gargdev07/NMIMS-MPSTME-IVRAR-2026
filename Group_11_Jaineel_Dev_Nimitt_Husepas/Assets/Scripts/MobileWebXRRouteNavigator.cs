@@ -5,9 +5,10 @@ using System.Text;
 using UnityEngine;
 
 /// <summary>
-/// MobileWebXRRouteNavigator runs on the visitor's smartphone browser via WebXR,
-/// ingests handoff waypoints from the smart kiosk, renders floating directional arrows,
-/// and tracks transit time and route deviation telemetry.
+/// Legacy Unity scaffold retained for compatibility with the faculty starter files.
+/// It is not the browser WebXR implementation and its Transform pose must not be
+/// presented as real device tracking. The browser implementation is in index.html;
+/// S014WebXRPoseAdapter is the Unity-side integration boundary.
 /// 
 /// Course: IVRAR (Immersive Virtual, Real & Augmented Reality) - Group 11
 /// Governing Standard: Activity-Based AR Navigation (Mulloni 2011) & ISO 9241-11 Usability
@@ -33,7 +34,7 @@ public class MobileWebXRRouteNavigator : MonoBehaviour
     [Header("Waypoints & Guidance")]
     public List<NavWaypoint> activeRouteWaypoints = new List<NavWaypoint>();
     public int currentTargetWaypointIndex = 0;
-    public float waypointArrivalThresholdMeters = 2.0f;
+    public float waypointArrivalThresholdMeters = 1.4f;
     public float maxAllowedDeviationMeters = 4.0f;
 
     [Header("Live Transit Metrics")]

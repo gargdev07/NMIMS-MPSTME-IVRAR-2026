@@ -24,6 +24,7 @@
     h3 { margin: 0 0 6px 0; font-size: 15px; color: #4fc3f7; }
     p { margin: 0 0 4px 0; font-size: 12px; line-height: 1.4; color: #cfd8dc; }
     .badge { display: inline-block; background: #0288d1; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; }
+    #webxr-start { margin-top: 8px; padding: 7px 10px; border: 0; border-radius: 4px; background: #00adb5; color: #102027; font-weight: 600; }
   </style>
 </head>
 <body>
@@ -31,11 +32,12 @@
     <span class="badge">IVRAR IVRAR_GROUP_11</span>
     <h3>How can a hybrid smart AR kiosk and mobile handoff system reduce transit time an...</h3>
     <p><strong>Standards:</strong> IEEE 2888.1 / ISO 9241-210 / W3C WebXR</p>
-    <p><strong>Controls:</strong> WASD keys to walk, mouse click & drag to look around. Click VR button on VR headsets.</p>
-    <p><strong>Status:</strong> WebXR Spatial Telemetry Logger Active</p>
+    <p><strong>Controls:</strong> Enter immersive AR on a compatible mobile browser.</p>
+    <p id="webxr-status"><strong>Status:</strong> WebXR capability check pending.</p>
+    <button id="webxr-start" type="button">Start WebXR AR</button>
   </div>
 
-  <a-scene background="color: #1a1a2e">
+  <a-scene id="s014-scene" embedded background="color: #1a1a2e">
     <a-plane position="0 0 0" rotation="-90 0 0" width="20" height="20" color="#263238" roughness="0.8"></a-plane>
     
     <!-- Central Interactive Entity -->
@@ -52,5 +54,134 @@
       </a-entity>
     </a-entity>
   </a-scene>
+  <script>
+    /*
+     * S014 browser layer.
+     * This uses the W3C WebXR Device API directly. It does not simulate a
+     * camera pose and it does not claim to send a pose into Unity.
+     */
+    (function () {
+      const status = document.getElementById('webxr-status');
+      const startButton = document.getElementById('webxr-start');
+      const scene = document.getElementById('s014-scene');
+      const arrivalRadius = 1.4;
+      const smoothing = 0.25;
+      const route = [
+        { position: [0, 0, -3], instruction: 'Proceed toward the next waypoint', floor: 'Ground', floorTransition: false },
+        { position: [4, 0, -6], instruction: 'Turn right at the landmark', floor: 'Ground', floorTransition: false },
+        { position: [4, 0, -9], instruction: 'Continue to the floor transition', floor: 'Ground', floorTransition: true, destinationFloor: 'First' },
+        { position: [8, 3, -9], instruction: 'Proceed on the next level', floor: 'First', floorTransition: false },
+        { position: [8, 3, -13], instruction: 'Destination reached', floor: 'First', floorTransition: false }
+      ];
+      let session = null;
+      let referenceSpace = null;
+      let currentIndex = 0;
+      let previousOrientation = null;
+      let chevrons = [];
+
+      function setStatus(message) {
+        status.textContent = 'Status: ' + message;
+      }
+
+      function distance(a, b) {
+        const dx = a.x - b[0];
+        const dy = a.y - b[1];
+        const dz = a.z - b[2];
+        return Math.sqrt(dx * dx + dy * dy + dz * dz);
+      }
+
+      function slerp(a, b, t) {
+        let ax = a[0], ay = a[1], az = a[2], aw = a[3];
+        let bx = b[0], by = b[1], bz = b[2], bw = b[3];
+        let dot = ax * bx + ay * by + az * bz + aw * bw;
+        if (dot < 0) { bx = -bx; by = -by; bz = -bz; bw = -bw; dot = -dot; }
+        if (dot > 0.9995) {
+          const result = [ax + t * (bx - ax), ay + t * (by - ay), az + t * (bz - az), aw + t * (bw - aw)];
+          const length = Math.hypot(result[0], result[1], result[2], result[3]);
+          return result.map(value => value / length);
+        }
+        const theta = Math.acos(dot);
+        const sinTheta = Math.sin(theta);
+        const first = Math.sin((1 - t) * theta) / sinTheta;
+        const second = Math.sin(t * theta) / sinTheta;
+        return [ax * first + bx * second, ay * first + by * second, az * first + bz * second, aw * first + bw * second];
+      }
+
+      function renderRoute() {
+        route.forEach((waypoint, index) => {
+          const marker = document.createElement('a-entity');
+          marker.setAttribute('position', waypoint.position.join(' '));
+          marker.setAttribute('geometry', 'primitive: cone; radiusBottom: 0.18; radiusTop: 0; height: 0.45');
+          marker.setAttribute('material', 'color: ' + (waypoint.floorTransition ? '#ffca28' : '#00adb5'));
+          marker.setAttribute('rotation', '-90 0 0');
+          marker.setAttribute('visible', index === currentIndex);
+          scene.appendChild(marker);
+          chevrons.push(marker);
+        });
+      }
+
+      function advanceWaypoint() {
+        const reached = route[currentIndex];
+        window.dispatchEvent(new CustomEvent('s014-waypoint-reached', { detail: { index: currentIndex, waypoint: reached } }));
+        if (reached.floorTransition) {
+          window.dispatchEvent(new CustomEvent('s014-floor-transition', { detail: reached }));
+        }
+        currentIndex += 1;
+        if (currentIndex >= route.length) {
+          window.dispatchEvent(new CustomEvent('s014-destination-reached'));
+          setStatus('Destination reached.');
+          if (session) session.end();
+          return;
+        }
+        chevrons.forEach((chevron, index) => chevron.setAttribute('visible', index === currentIndex));
+      }
+
+      function onXRFrame(time, frame) {
+        const pose = frame.getViewerPose(referenceSpace);
+        if (pose) {
+          const transform = pose.transform;
+          const position = transform.position;
+          const orientation = [transform.orientation.x, transform.orientation.y, transform.orientation.z, transform.orientation.w];
+          previousOrientation = previousOrientation ? slerp(previousOrientation, orientation, smoothing) : orientation;
+          window.dispatchEvent(new CustomEvent('s014-webxr-pose', {
+            detail: { position: { x: position.x, y: position.y, z: position.z }, orientation: previousOrientation }
+          }));
+          if (currentIndex < route.length && distance(position, route[currentIndex].position) <= arrivalRadius) {
+            advanceWaypoint();
+          }
+        }
+        session.requestAnimationFrame(onXRFrame);
+      }
+
+      async function startWebXR() {
+        if (!navigator.xr) {
+          setStatus('WebXR is unavailable in this browser/device.');
+          return;
+        }
+        if (!(await navigator.xr.isSessionSupported('immersive-ar'))) {
+          setStatus('Immersive AR is not supported on this device.');
+          return;
+        }
+        session = await navigator.xr.requestSession('immersive-ar', { requiredFeatures: ['local-floor'] });
+        referenceSpace = await session.requestReferenceSpace('local-floor');
+        currentIndex = 0;
+        previousOrientation = null;
+        renderRoute();
+        session.addEventListener('end', () => {
+          session = null;
+          referenceSpace = null;
+          setStatus('WebXR session ended.');
+        });
+        setStatus('Live WebXR pose tracking active.');
+        session.requestAnimationFrame(onXRFrame);
+      }
+
+      startButton.addEventListener('click', () => {
+        startWebXR().catch(error => setStatus('WebXR failed: ' + error.message));
+      });
+      setStatus(navigator.xr ? 'WebXR API available; ready to start.' : 'WebXR API unavailable in this browser.');
+      window.S014WebXR = { route: route, arrivalRadius: arrivalRadius, onPose: 's014-webxr-pose' };
+    }());
+  </script>
 </body>
 </html>
