@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Smart Campus AR Wayfinding</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; }
+    body { margin: 0; min-height: 100vh; background: #07131f; color: #e9f7ff; }
+    main { max-width: 42rem; margin: 0 auto; padding: 2rem 1.25rem; }
+    h1 { color: #6fe5ff; letter-spacing: .08em; }
+    .card { padding: 1rem; margin: 1rem 0; border: 1px solid #22506a; border-radius: .75rem; background: #0b2130; }
+    button { width: 100%; padding: .9rem; border: 0; border-radius: .5rem; color: #031018; background: #6fe5ff; font-weight: 700; }
+    button:disabled { opacity: .45; }
+    .muted { color: #a9c6d4; }
+    .success { color: #8dffb0; }
+    .warning { color: #ffd479; }
+    #guidance { font-size: 1.3rem; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>SMART CAMPUS<br>AR WAYFINDING</h1>
+    <section class="card">
+      <div id="route">Waiting for route handoff...</div>
+      <div id="payloadStatus" class="muted">No session loaded.</div>
+    </section>
+    <section class="card">
+      <div id="capability" class="muted">Checking WebXR capability...</div>
+      <button id="start" type="button" disabled>Start real immersive AR</button>
+      <p id="status" class="muted">Real WebXR has not started.</p>
+      <p id="guidance">Load a valid session to begin.</p>
+    </section>
+  </main>
+  <script>
+    (function () {
+      const routeLabel = document.getElementById("route");
+      const payloadStatus = document.getElementById("payloadStatus");
+      const capability = document.getElementById("capability");
+      const start = document.getElementById("start");
+      const status = document.getElementById("status");
+      const guidance = document.getElementById("guidance");
+      let session;
+      let referenceSpace;
+      let payload;
+      let routeIndex = 0;
+      let lastPosition;
+      const route = [
+        { id: "entrance", x: 0, y: 0, z: -3, label: "Kiosk lobby" },
+        { id: "corridor", x: 4, y: 0, z: -6, label: "Central atrium" },
+        { id: "transition", x: 4, y: 0, z: -9, label: "Stair and elevator core", transition: true },
+        { id: "first-floor", x: 8, y: 3, z: -9, label: "First-floor junction" },
+        { id: "destination", x: 8, y: 3, z: -13, label: "Destination" }
+      ];
+
+      function setStatus(message, className) {
+        status.textContent = message;
+        status.className = className || "muted";
+      }
+
+      function decodePayload(encoded) {
+        const bytes = Uint8Array.from(atob(decodeURIComponent(encoded)), c => c.charCodeAt(0));
+        return JSON.parse(new TextDecoder().decode(bytes));
+      }
+
+      function readPayload() {
+        const query = new URLSearchParams(window.location.search);
+        const encoded = query.get("payload");
+        if (!encoded) {
+          setStatus("No QR payload was supplied.", "warning");
+          start.disabled = true;
+          return;
+        }
+        try {
+          payload = decodePayload(encoded);
+          if (!payload.sessionId || !payload.routeId || !payload.destinationId ||
+              !payload.destinationName || !payload.targetFloor || !payload.routeVersion) {
+            throw new Error("Required session, route, destination, floor, or version fields are missing.");
+          }
+          route[route.length - 1].label = payload.destinationName;
+          routeLabel.textContent = "DESTINATION: " + payload.destinationName + " | FLOOR: " + payload.targetFloor;
+          payloadStatus.textContent = "Session " + payload.sessionId + " | Route " + payload.routeId + " | Payload valid";
+          payloadStatus.className = "success";
+          window.S014WebXRPayload = payload;
+        } catch (error) {
+          routeLabel.textContent = "Invalid route handoff";
+          payloadStatus.textContent = error.message;
+          payloadStatus.className = "warning";
+          start.disabled = true;
+        }
+      }
+
+      async function checkCapability() {
+        if (!payload) return;
+        if (!navigator.xr) {
+          capability.textContent = "REAL WEBXR UNAVAILABLE. This page does not call fallback mode AR.";
+          capability.className = "warning";
+          setStatus("Use a supported HTTPS browser/device for real immersive AR.", "warning");
+          return;
+        }
+        try {
+          const supported = await navigator.xr.isSessionSupported("immersive-ar");
+          capability.textContent = supported ? "REAL WEBXR SUPPORTED." : "REAL WEBXR UNSUPPORTED.";
+          capability.className = supported ? "success" : "warning";
+          start.disabled = !supported;
+          setStatus(supported ? "Ready to request immersive-ar." : "Immersive AR is unavailable on this device.", supported ? "success" : "warning");
+        } catch (error) {
+          capability.textContent = "WebXR capability check failed.";
+          setStatus(error.message, "warning");
+        }
+      }
+
+      function distanceToTarget(position, target) {
+        const dx = position.x - target.x;
+        const dy = position.y - target.y;
+        const dz = position.z - target.z;
+        return Math.sqrt(dx * dx + dy * dy + dz * dz);
+      }
+
+      function frameLoop(time, frame) {
+        const pose = frame.getViewerPose(referenceSpace);
+        if (pose) {
+          const transform = pose.transform;
+          const position = transform.position;
+          lastPosition = position;
+          const target = route[routeIndex];
+          if (target && distanceToTarget(position, target) <= 1.4) {
+            if (target.transition) {
+              guidance.textContent = "Floor transition â€” proceed to " + (payload.targetFloor || "the next floor");
+            }
+            routeIndex++;
+            if (routeIndex >= route.length) {
+              guidance.textContent = "Destination reached â€” session complete.";
+              setStatus("REAL WEBXR SESSION COMPLETE.", "success");
+              session.end();
+              return;
+            }
+          }
+          if (routeIndex < route.length) {
+            const next = route[routeIndex];
+            guidance.textContent = "Move toward " + next.label + " (" + distanceToTarget(position, next).toFixed(1) + " m)";
+          }
+          window.dispatchEvent(new CustomEvent("s014-webxr-pose", {
+            detail: {
+              position: { x: position.x, y: position.y, z: position.z },
+              orientation: {
+                x: transform.orientation.x, y: transform.orientation.y,
+                z: transform.orientation.z, w: transform.orientation.w
+              },
+              routeIndex: routeIndex,
+              sessionId: payload.sessionId
+            }
+          }));
+        }
+        session.requestAnimationFrame(frameLoop);
+      }
+
+      async function startWebXR() {
+        if (!navigator.xr || !payload) return;
+        try {
+          session = await navigator.xr.requestSession("immersive-ar", {
+            requiredFeatures: ["local-floor"]
+          });
+          referenceSpace = await session.requestReferenceSpace("local-floor");
+          routeIndex = 0;
+          setStatus("REAL WEBXR POSE TRACKING ACTIVE.", "success");
+          session.addEventListener("end", () => {
+            setStatus("WebXR session ended. Start again when ready.", "muted");
+            start.disabled = false;
+          });
+          session.requestAnimationFrame(frameLoop);
+        } catch (error) {
+          setStatus("WebXR failed: " + error.message, "warning");
+        }
+      }
+
+      start.addEventListener("click", startWebXR);
+      readPayload();
+      checkCapability();
+      window.S014WebXR = { route: route, poseEvent: "s014-webxr-pose", fallback: "not-real-AR" };
+    }());
+  </script>
+</body>
+</html>
