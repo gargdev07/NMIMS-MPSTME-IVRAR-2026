@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07131f">
+  <title>Smart Campus Virtual Wayfinding</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/build/three.module.js"
+      }
+    }
+  </script>
+  <script type="module" src="./virtual-campus.js?v=4.6-campus-routing-ready"></script>
+</head>
+<body>
+  <canvas id="campusView" aria-label="Interactive 3D view of the virtual campus"></canvas>
+  <main class="panel">
+    <header>
+      <p class="eyebrow">VIRTUAL CAMPUS WAYFINDING</p>
+      <h1 id="destination">Loading campus…</h1>
+      <p id="floor">Validating QR handoff</p>
+    </header>
+    <section class="card" aria-live="polite">
+      <div class="statusLine">
+        <span id="modelStatus">Loading the campus model…</span>
+        <span id="progress">0%</span>
+      </div>
+      <div id="payloadStatus">No session loaded.</div>
+      <div id="coverageStatus">Route coverage has not been verified.</div>
+      <div id="instruction">The virtual route will appear after a valid handoff.</div>
+    </section>
+    <section class="controls">
+      <button id="startRoute" type="button" disabled>START VIRTUAL ROUTE</button>
+      <button id="routeMode" type="button" disabled>USE CAMPUS PROTOTYPE ROUTES</button>
+      <button id="xrPreview" type="button" disabled>OPEN IMMERSIVE AR PREVIEW</button>
+      <div class="buttonRow">
+        <button id="pauseRoute" type="button" disabled>PAUSE</button>
+        <button id="resetRoute" type="button" disabled>RESET</button>
+        <button id="restartRoute" type="button" disabled>RESTART</button>
+        <button id="overview" type="button">CAMPUS OVERVIEW</button>
+      </div>
+    </section>
+    <section class="destinationControls">
+      <label for="destinationSelect">Change virtual destination</label>
+      <div class="destinationRow">
+        <select id="destinationSelect" disabled aria-label="Choose another virtual destination"></select>
+        <button id="changeDestination" type="button" disabled>CHANGE</button>
+      </div>
+    </section>
+    <section class="card metrics">
+      <div><span>Next</span><strong id="nextWaypoint">—</strong></div>
+      <div><span>Distance</span><strong id="distance">—</strong></div>
+      <div><span>Progress</span><strong id="routeProgress">—</strong></div>
+      <div><span>Floor</span><strong id="currentFloor">—</strong></div>
+    </section>
+    <p id="notice" class="notice">Virtual 3D navigation does not require physical campus alignment.</p>
+    <p id="arStatus" class="small muted">Immersive AR is optional. Virtual 3D navigation remains available without AR.</p>
+  </main>
+  <div id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
