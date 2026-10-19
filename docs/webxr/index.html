@@ -14,14 +14,19 @@
       }
     }
   </script>
-  <script type="module" src="./virtual-campus.js?v=4.8-smooth-route-camera"></script>
+  <script type="module" src="./virtual-campus.js?v=4.9-mobile-interior-wayfinding"></script>
 </head>
 <body>
   <canvas id="campusView" aria-label="Interactive 3D view of the virtual campus"></canvas>
   <main class="panel" id="controlPanel">
     <header>
-      <p class="eyebrow">VIRTUAL CAMPUS WAYFINDING</p>
-      <h1 id="destination">Loading campus…</h1>
+      <div class="panelHeading">
+        <div>
+          <p class="eyebrow">VIRTUAL CAMPUS WAYFINDING</p>
+          <h1 id="destination">Loading campus…</h1>
+        </div>
+        <button id="panelToggle" class="panelToggle" type="button" aria-expanded="false" aria-controls="panelDetails">DETAILS</button>
+      </div>
       <p id="floor">Validating QR handoff</p>
     </header>
     <section class="routeSummary" aria-live="polite">
@@ -35,7 +40,6 @@
       <button id="startRoute" type="button" disabled>START ROUTE</button>
       <button id="xrPreview" type="button" disabled>OPEN AR</button>
     </section>
-    <button id="panelToggle" class="panelToggle" type="button" aria-expanded="false" aria-controls="panelDetails">MORE OPTIONS</button>
     <section id="panelDetails" class="panelDetails" hidden>
     <section class="card" aria-live="polite">
       <div class="statusLine">

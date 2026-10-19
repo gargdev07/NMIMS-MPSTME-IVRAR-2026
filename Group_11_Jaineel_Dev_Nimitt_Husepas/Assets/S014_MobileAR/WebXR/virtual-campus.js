@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "./vendor/examples/jsm/loaders/GLTFLoader.js";
 import { createRepresentativeInterior } from "./representative-interior.js";
 import { auditDestinationRoutes, findShortestPath, validateNavigationGraph } from "./route-graph.js";
-import { checkImmersiveArSupport, requestImmersiveArSession } from "./xr-support.js?v=4.8-smooth-route-camera";
+import { checkImmersiveArSupport, requestImmersiveArSession } from "./xr-support.js?v=4.9-mobile-interior-wayfinding";
 
 const canvas = document.getElementById("campusView");
 const destinationElement = document.getElementById("destination");
@@ -62,6 +62,17 @@ const travelSpeed = 1.8;
 const cameraLookAheadDistance = 5;
 const collisionRadius = 0.24;
 const PROTOTYPE_INTERIOR_DESTINATIONS = new Set(["lab-101", "lab-102", "lab-103", "student-help"]);
+const MAPPED_PROTOTYPE_INTERIOR_SEGMENTS = new Set([
+  "prototype-ground-threshold->prototype-ground-corridor",
+  "prototype-ground-corridor->prototype-stair-bottom",
+  "prototype-stair-bottom->prototype-stair-mid",
+  "prototype-stair-mid->prototype-stair-top",
+  "prototype-stair-top->prototype-upper-corridor",
+  "prototype-upper-corridor->campus-destination-lab-101",
+  "prototype-upper-corridor->campus-destination-lab-102",
+  "prototype-upper-corridor->campus-destination-lab-103",
+  "prototype-ground-corridor->campus-destination-student-help"
+]);
 const routeColor = 0x36e3ff;
 let routeData;
 let selectedDestination;
@@ -100,7 +111,8 @@ let campusObstacleMeshes = [];
 function setPanelExpanded(expanded) {
   panelDetailsElement.hidden = !expanded;
   panelToggleButton.setAttribute("aria-expanded", String(expanded));
-  panelToggleButton.textContent = expanded ? "LESS OPTIONS" : "MORE OPTIONS";
+  panelToggleButton.textContent = expanded ? "CLOSE" : "DETAILS";
+  panelToggleButton.setAttribute("aria-label", expanded ? "Close route details" : "Show route details");
   controlPanelElement.classList.toggle("collapsed", !expanded);
 }
 
@@ -360,7 +372,9 @@ function setRouteStatus() {
   routeProgressElement.textContent = Math.min(routeIndex, route.length - 1) + " / " + (route.length - 1);
   currentFloorElement.textContent = routeData.floorNames[target.floor];
   floorElement.textContent = routeMode === "campus"
-    ? "Campus approach level: " + routeData.floorNames[target.floor] + " · interior floor not mapped"
+    ? (PROTOTYPE_INTERIOR_DESTINATIONS.has(selectedDestination.id)
+      ? "Campus route · prototype interior mapped · " + routeData.floorNames[target.floor]
+      : "Campus approach · " + routeData.floorNames[target.floor] + " · interior not mapped")
     : "Destination floor: " + routeData.floorNames[selectedDestination.floor];
 }
 
@@ -497,7 +511,9 @@ function changeDestination() {
     currentPosition = route[0].position.clone();
     destinationElement.textContent = destination.name;
     floorElement.textContent = routeMode === "campus"
-      ? "Campus approach level: Ground floor · interior floor not mapped"
+      ? (PROTOTYPE_INTERIOR_DESTINATIONS.has(destination.id)
+        ? "Campus route · prototype interior mapped"
+        : "Campus approach · interior not mapped")
       : "Destination floor: " + routeData.floorNames[destination.floor];
     payloadStatusElement.textContent = "Virtual session " + activeSessionId + " · " +
       route.length + " connected waypoints · " + routeData.floorNames[destination.floor];
@@ -538,7 +554,10 @@ function getCoverageMessage(destination) {
     const startNode = routeData.campusPrototypeGraph.nodes.find(node =>
       node.id === routeData.campusPrototypeGraph.startNodeId);
     const startLabel = startNode ? startNode.label : "the inferred campus starting point";
-    return "Starts at " + startLabel + ". Generic entrance assignment and outdoor links are inferred; the named room and its indoor floor are not mapped.";
+    if (PROTOTYPE_INTERIOR_DESTINATIONS.has(destination.id)) {
+      return "Starts at " + startLabel + ". The campus connector is inferred; the prototype interior follows mapped Unity corridor, stair, and room waypoints.";
+    }
+    return "Starts at " + startLabel + ". Outdoor links and the assigned building entrance are inferred; indoor rooms are not mapped.";
   }
   return destination.coverage === "prototype-outdoor"
     ? "Prototype exterior route — not a verified campus-wide path."
@@ -603,8 +622,14 @@ function focusCampusOverview() {
   instructionElement.textContent = "Campus overview. Select Start Virtual Route to follow the QR destination.";
 }
 
-function isBlockedByCampus(from, to) {
-  if (routeMode === "campus") return isBlockedByProjectedCampusMeshes(from, to);
+function isMappedPrototypeInteriorSegment(fromWaypoint, toWaypoint) {
+  return !!fromWaypoint && !!toWaypoint && MAPPED_PROTOTYPE_INTERIOR_SEGMENTS.has(
+    fromWaypoint.id + "->" + toWaypoint.id
+  );
+}
+
+function isBlockedByCampus(from, to, allowMappedPrototypeInterior = false) {
+  if (routeMode === "campus") return isBlockedByProjectedCampusMeshes(from, to, allowMappedPrototypeInterior);
   const delta = to.clone().sub(from);
   const length = delta.length();
   if (length < 0.01 || (campusCollisionObjects.length === 0 && interiorCollisionObjects.length === 0)) return false;
@@ -688,7 +713,7 @@ function isDoorwayPortal(meshId, x, z) {
   return meshId.includes("Building_001") && x >= 40 && x <= 50 && z >= 15 && z <= 24;
 }
 
-function isBlockedByProjectedCampusMeshes(from, to) {
+function isBlockedByProjectedCampusMeshes(from, to, allowMappedPrototypeInterior = false) {
   if (campusObstacleBins.size === 0) {
     lastBlock = { object: "unavailable imported building obstacle mesh", point: [from.x, from.y + 0.88, from.z], distance: 0 };
     return true;
@@ -702,6 +727,7 @@ function isBlockedByProjectedCampusMeshes(from, to) {
     const z = from.z + delta.z * t;
     const candidates = campusObstacleBins.get(Math.floor(x) + "," + Math.floor(z)) || [];
     const hit = candidates.find(candidate =>
+      !(allowMappedPrototypeInterior && candidate.id.includes("Building_23990")) &&
       !isDoorwayPortal(candidate.id, x, z) && isNearObstacleTriangle(x, z, candidate.triangle, clearance)
     );
     if (!hit) continue;
@@ -760,7 +786,9 @@ function advanceNavigation(deltaTime) {
   const step = Math.min(distance, travelSpeed * Math.min(deltaTime, 0.05));
   if (distance > 0.001) {
     const nextPosition = currentPosition.clone().addScaledVector(remaining.normalize(), step);
-    if (isBlockedByCampus(currentPosition, nextPosition)) {
+    const previousWaypoint = route[Math.max(0, routeIndex - 1)];
+    if (isBlockedByCampus(currentPosition, nextPosition,
+      routeMode === "campus" && isMappedPrototypeInteriorSegment(previousWaypoint, target))) {
       const blockedBy = lastBlock && lastBlock.object ? lastBlock.object : "campus geometry";
       const detour = findCampusObstacleDetour(currentPosition, target.position);
       if (detour) {
@@ -1101,8 +1129,8 @@ async function initialize() {
 
   try {
     const [routeResponse, obstaclesResponse] = await Promise.all([
-      fetch("./route-data.json?v=4.8-smooth-route-camera"),
-      fetch("./campus-building-obstacles.json?v=4.8-smooth-route-camera")
+      fetch("./route-data.json?v=4.9-mobile-interior-wayfinding"),
+      fetch("./campus-building-obstacles.json?v=4.9-mobile-interior-wayfinding")
     ]);
     if (!routeResponse.ok) throw new Error("Could not load the campus route catalogue (" + routeResponse.status + ").");
     if (!obstaclesResponse.ok) throw new Error("Could not load the imported campus building mesh (" + obstaclesResponse.status + ").");
@@ -1167,8 +1195,8 @@ async function initialize() {
   try {
     if (!routeData) {
       const [routeResponse, obstaclesResponse] = await Promise.all([
-        fetch("./route-data.json?v=4.8-smooth-route-camera"),
-        fetch("./campus-building-obstacles.json?v=4.8-smooth-route-camera")
+        fetch("./route-data.json?v=4.9-mobile-interior-wayfinding"),
+        fetch("./campus-building-obstacles.json?v=4.9-mobile-interior-wayfinding")
       ]);
       if (!routeResponse.ok) throw new Error("Could not load the campus route catalogue (" + routeResponse.status + ").");
       if (!obstaclesResponse.ok) throw new Error("Could not load the imported campus building mesh (" + obstaclesResponse.status + ").");

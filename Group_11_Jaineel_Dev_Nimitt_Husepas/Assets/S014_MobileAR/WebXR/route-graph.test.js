@@ -40,6 +40,17 @@ const qrHandoffSource = await readFile(
 const doorwayPortals = [
   { building: "Building_001", minX: 40, maxX: 50, minZ: 15, maxZ: 24 }
 ];
+const mappedPrototypeInteriorSegments = new Set([
+  "prototype-ground-threshold->prototype-ground-corridor",
+  "prototype-ground-corridor->prototype-stair-bottom",
+  "prototype-stair-bottom->prototype-stair-mid",
+  "prototype-stair-mid->prototype-stair-top",
+  "prototype-stair-top->prototype-upper-corridor",
+  "prototype-upper-corridor->campus-destination-lab-101",
+  "prototype-upper-corridor->campus-destination-lab-102",
+  "prototype-upper-corridor->campus-destination-lab-103",
+  "prototype-ground-corridor->campus-destination-student-help"
+]);
 const projectedMeshBins = new Map();
 for (const mesh of buildingMeshes) for (const triangle of mesh.triangles) {
   for (let x = Math.floor(Math.min(triangle[0], triangle[2], triangle[4])); x <= Math.floor(Math.max(triangle[0], triangle[2], triangle[4])); x++) {
@@ -89,6 +100,32 @@ function intersectsBuildingMesh(point, margin = 0.3) {
     point[0] < prototypeBounds.maxX + prototypeBounds.clearance + margin &&
     point[2] > prototypeBounds.minZ - prototypeBounds.clearance - margin &&
     point[2] < prototypeBounds.maxZ + prototypeBounds.clearance + margin;
+}
+
+function firstUnapprovedRouteObstruction(route) {
+  for (let index = 1; index < route.waypoints.length; index++) {
+    const from = route.waypoints[index - 1], to = route.waypoints[index];
+    const mappedPrototypeInterior = mappedPrototypeInteriorSegments.has(`${from.id}->${to.id}`);
+    const a = from.position, b = to.position;
+    const length = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+    const samples = Math.max(1, Math.ceil(length / 0.25));
+    for (let sample = 1; sample <= samples; sample++) {
+      const t = sample / samples;
+      const x = a[0] + (b[0] - a[0]) * t;
+      const z = a[2] + (b[2] - a[2]) * t;
+      for (const { id, triangle } of projectedMeshBins.get(`${Math.floor(x)},${Math.floor(z)}`) ?? []) {
+        if (id.includes("Building_001") && x >= 40 && x <= 50 && z >= 15 && z <= 24) continue;
+        if (mappedPrototypeInterior && id.includes("Building_23990")) continue;
+        if (pointInProjectedTriangle(x, z, triangle) || Math.min(
+          pointSegmentDistance(x, z, triangle[0], triangle[1], triangle[2], triangle[3]),
+          pointSegmentDistance(x, z, triangle[2], triangle[3], triangle[4], triangle[5]),
+          pointSegmentDistance(x, z, triangle[4], triangle[5], triangle[0], triangle[1])) <= 0.3) {
+          return `${from.id} -> ${to.id} intersects ${id} at (${x.toFixed(1)}, ${z.toFixed(1)})`;
+        }
+      }
+    }
+  }
+  return null;
 }
 
 test("the Unity master scene loads the whole-campus graph for its actual route provider", () => {
@@ -226,6 +263,31 @@ test("outdoor waypoints and edges clear the projected imported building meshes",
     destination.campusNodeId
   ));
   assert.ok(destinationRoutes.every(route => route.waypoints.length > 1));
+});
+
+test("every mobile destination route clears building geometry and prototype entry uses mapped interior waypoints", () => {
+  const prototypeInteriorIds = new Set(["lab-101", "lab-102", "lab-103", "student-help"]);
+  for (const destination of routeData.destinations) {
+    const route = findShortestPath(
+      routeData.campusPrototypeGraph,
+      routeData.campusPrototypeGraph.startNodeId,
+      destination.campusNodeId
+    );
+    assert.equal(route.destinationId, destination.id);
+    assert.equal(route.waypoints.at(-1).id, destination.campusNodeId);
+    assert.equal(firstUnapprovedRouteObstruction(route), null,
+      `Mobile route for ${destination.id} must not cross an imported building wall.`);
+    if (prototypeInteriorIds.has(destination.id)) {
+      assert.ok(route.waypoints.some(point => point.id === "prototype-ground-threshold"),
+        `${destination.id} must enter through the mapped prototype doorway.`);
+      assert.ok(route.waypoints.some(point => point.id === "prototype-ground-corridor"),
+        `${destination.id} must follow the mapped prototype corridor.`);
+    }
+  }
+  assert.match(phoneClientSource, /MAPPED_PROTOTYPE_INTERIOR_SEGMENTS/);
+  assert.match(phoneClientSource, /allowMappedPrototypeInterior && candidate\.id\.includes\("Building_23990"\)/);
+  assert.match(phoneClientSource, /isMappedPrototypeInteriorSegment\(previousWaypoint, target\)/);
+  assert.match(phoneClientSource, /Campus route · prototype interior mapped/);
 });
 
 test("facility assignments use building entrances and parking ends on the modeled path", () => {
@@ -486,12 +548,12 @@ test("immersive AR tap gives immediate feedback and prevents duplicate session r
 
 test("campus route checks for a clear side step before stopping at model geometry", async () => {
   const script = await readFile(new URL("./virtual-campus.js", import.meta.url), "utf8");
-  assert.match(script, /if \(routeMode === "campus"\) return isBlockedByProjectedCampusMeshes\(from, to\)/);
+  assert.match(script, /if \(routeMode === "campus"\) return isBlockedByProjectedCampusMeshes\(from, to, allowMappedPrototypeInterior\)/);
   assert.match(script, /function buildCampusObstacleIndex\(data\)/);
-  assert.match(script, /function isBlockedByProjectedCampusMeshes\(from, to\)/);
+  assert.match(script, /function isBlockedByProjectedCampusMeshes\(from, to, allowMappedPrototypeInterior = false\)/);
   assert.match(script, /function pointInObstacleTriangle\(x, z, triangle\)/);
   assert.match(script, /function pointToObstacleEdgeDistance\(x, z, ax, az, bx, bz\)/);
-  assert.match(script, /campus-building-obstacles\.json\?v=4\.8-smooth-route-camera/);
+  assert.match(script, /campus-building-obstacles\.json\?v=4\.9-mobile-interior-wayfinding/);
   assert.doesNotMatch(script, /isBlockedByNamedBuildingBounds/);
   assert.match(script, /function findCampusObstacleDetour\(from, target\)/);
   assert.match(script, /if \(!isBlockedByCampus\(from, candidate\.point\)\) return candidate\.point/);
@@ -505,13 +567,17 @@ test("mobile wayfinding keeps the campus visible behind a compact, accessible pa
   const styles = await readFile(new URL("./styles.css", import.meta.url), "utf8");
   const script = await readFile(new URL("./virtual-campus.js", import.meta.url), "utf8");
   assert.match(html, /id="panelToggle"[^>]*aria-expanded="false"[^>]*aria-controls="panelDetails"/);
+  assert.match(html, /<div class="panelHeading">[\s\S]*id="destination"[\s\S]*id="panelToggle"/);
+  assert.doesNotMatch(html, /MORE OPTIONS/);
   assert.match(html, /id="panelDetails" class="panelDetails" hidden/);
   assert.match(html, /id="startRoute"/);
   assert.match(html, /id="xrPreview"/);
   assert.match(script, /matchMedia\("\(max-width: 759px\)"\)/);
   assert.match(script, /function setPanelExpanded\(expanded\)/);
   assert.match(script, /setPanelExpanded\(false\)/);
-  assert.match(styles, /\.panel\.collapsed\s*\{\s*overflow:\s*hidden/s);
+  assert.match(styles, /\.panel\.collapsed\s*\{\s*max-height:\s*none/s);
+  assert.match(styles, /\.panel\.collapsed header > #floor \{ display: none; \}/);
+  assert.match(styles, /\.panel\.collapsed \.routeSummary #instruction\s*\{[\s\S]*-webkit-line-clamp:\s*1/s);
   assert.match(styles, /\.panelDetails\[hidden\]\s*\{\s*display:\s*none/s);
 });
 

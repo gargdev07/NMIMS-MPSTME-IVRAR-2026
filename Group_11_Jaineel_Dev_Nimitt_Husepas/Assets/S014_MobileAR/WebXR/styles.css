@@ -76,6 +76,9 @@ button:focus-visible {
 
 .panelDetails[hidden] { display: none; }
 
+.panelHeading { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
+.panelHeading > div { flex: 1 1 auto; min-width: 0; }
+
 .routeSummary {
   margin: 0.35rem 0 0.55rem;
   border: 1px solid #20455a;
@@ -110,9 +113,10 @@ button:focus-visible {
 .primaryControls button:first-child { color: #051721; border-color: #72e9ff; background: #72e9ff; }
 
 .panelToggle {
-  width: 100%;
-  min-height: 38px;
-  margin-top: 0.4rem;
+  flex: 0 0 auto;
+  width: auto;
+  min-height: 36px;
+  margin: 0;
   padding-block: 0.45rem;
   background: #102b3a;
   font-size: 0.76rem;
@@ -330,12 +334,29 @@ header > p:last-child {
 }
 
 @media (max-width: 759px) {
-  .panel { max-height: min(34dvh, 18rem); padding: 0.65rem; }
+  .panel { max-height: min(34dvh, 18rem); padding: 0.5rem 0.6rem; }
   .panel:not(.collapsed) { max-height: min(82dvh, 48rem); overflow: hidden; }
   .panel.collapsed { overflow: hidden; }
   .panel header .eyebrow { display: none; }
-  .panel h1 { overflow: hidden; font-size: 1.15rem; text-overflow: ellipsis; white-space: nowrap; }
-  .panel header > p:last-child { margin: 0.15rem 0 0.35rem; font-size: 0.75rem; }
+  .panel.collapsed { max-height: none; }
+  .panel.collapsed header > #floor { display: none; }
+  .panel h1 { overflow: hidden; font-size: 1rem; text-overflow: ellipsis; white-space: nowrap; }
+  .panel header > #floor { margin: 0.15rem 0 0.25rem; font-size: 0.72rem; }
+  .panelToggle { min-height: 38px; padding: 0.35rem 0.55rem; font-size: 0.68rem; }
+  .panel.collapsed .routeSummary { margin: 0.12rem 0 0.32rem; border: 0; padding: 0; background: transparent; }
+  .panel.collapsed .routeSummary #instruction {
+    display: -webkit-box;
+    margin: 0 0 0.12rem;
+    overflow: hidden;
+    font-size: 0.7rem;
+    line-height: 1.2;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+  .panel.collapsed .summaryMetrics { margin: 0; gap: 0.5rem; font-size: 0.7rem; }
+  .panel.collapsed .summaryMetrics span:first-child { flex: 1 1 auto; }
+  .panel.collapsed .primaryControls { gap: 0.35rem; }
+  .panel.collapsed .primaryControls button { min-height: 44px; padding: 0.35rem 0.55rem; font-size: 0.75rem; }
   .panel.xr-active { background: rgb(5 18 29 / 72%); backdrop-filter: blur(5px); }
 }
 
