@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "./vendor/examples/jsm/loaders/GLTFLoader.js";
 import { createRepresentativeInterior } from "./representative-interior.js";
 import { auditDestinationRoutes, findShortestPath, validateNavigationGraph } from "./route-graph.js";
-import { checkImmersiveArSupport, requestImmersiveArSession } from "./xr-support.js?v=4.7-mobile-stability";
+import { checkImmersiveArSupport, requestImmersiveArSession } from "./xr-support.js?v=4.8-smooth-route-camera";
 
 const canvas = document.getElementById("campusView");
 const destinationElement = document.getElementById("destination");
@@ -59,6 +59,7 @@ const routeRaycaster = new THREE.Raycaster();
 const clock = new THREE.Clock();
 const eyeHeight = 1.6;
 const travelSpeed = 1.8;
+const cameraLookAheadDistance = 5;
 const collisionRadius = 0.24;
 const PROTOTYPE_INTERIOR_DESTINATIONS = new Set(["lab-101", "lab-102", "lab-103", "student-help"]);
 const routeColor = 0x36e3ff;
@@ -80,6 +81,8 @@ let modelReady = false;
 let handoffReady = false;
 let toastTimeout = 0;
 let cameraTarget = new THREE.Vector3();
+let cameraForward = new THREE.Vector3(0, 0, -1);
+let routePositionMarker;
 let lastBlock = null;
 let xrSession = null;
 let xrStartPending = false;
@@ -269,15 +272,77 @@ function updateRouteGraphics() {
     marker.renderOrder = 11;
     routeRoot.add(marker);
   });
+
+  routePositionMarker = new THREE.Mesh(
+    new THREE.SphereGeometry(1.1, 14, 10),
+    new THREE.MeshBasicMaterial({ color: 0x8dffb0, depthTest: false })
+  );
+  routePositionMarker.renderOrder = 15;
+  routeRoot.add(routePositionMarker);
 }
 
-function setCameraForRoute(position, targetPosition, immediate) {
+function setCameraForRoute(position, targetPosition, immediate, deltaTime = 1 / 60) {
   const eye = position.clone().add(new THREE.Vector3(0, eyeHeight, 0));
-  const target = targetPosition.clone().add(new THREE.Vector3(0, eyeHeight * 0.78, 0));
-  cameraTarget.copy(target);
+  const lookAhead = getRouteCameraLookAhead(position, routeIndex, cameraLookAheadDistance) || targetPosition.clone();
+  const desiredForward = lookAhead.sub(position);
+  desiredForward.y = 0;
+  if (desiredForward.lengthSq() < 0.0001) {
+    desiredForward.copy(targetPosition).sub(position);
+    desiredForward.y = 0;
+  }
+  if (desiredForward.lengthSq() > 0.0001) desiredForward.normalize();
+  else desiredForward.copy(cameraForward);
+  if (immediate) cameraForward.copy(desiredForward);
+  else cameraForward.lerp(desiredForward, 1 - Math.exp(-2.5 * Math.max(0, deltaTime))).normalize();
   if (immediate) camera.position.copy(eye);
-  else camera.position.lerp(eye, 0.18);
+  else camera.position.lerp(eye, 1 - Math.exp(-5 * Math.max(0, deltaTime)));
+  const target = eye.clone().addScaledVector(cameraForward, 6);
+  target.y -= 0.12;
+  cameraTarget.copy(target);
   camera.lookAt(cameraTarget);
+}
+
+function getRouteCameraLookAhead(position, firstIndex, distanceAhead) {
+  if (!route.length) return null;
+  let remaining = distanceAhead;
+  const cursor = position.clone();
+  cursor.y = 0;
+  for (let index = Math.max(0, firstIndex); index < route.length; index++) {
+    const next = route[index].position.clone();
+    next.y = 0;
+    const segment = next.clone().sub(cursor);
+    const length = segment.length();
+    if (length < 0.01) continue;
+    if (length >= remaining) return cursor.addScaledVector(segment, remaining / length).setY(position.y);
+    remaining -= length;
+    cursor.copy(next);
+  }
+  return cursor.setY(position.y);
+}
+
+function placeArMapFromViewer() {
+  if (!campusBounds) return;
+  const xrCamera = renderer.xr.getCamera(camera);
+  xrCamera.updateMatrixWorld(true);
+  const viewer = new THREE.Vector3();
+  const forward = new THREE.Vector3();
+  xrCamera.getWorldPosition(viewer);
+  xrCamera.getWorldDirection(forward);
+  forward.y = 0;
+  if (forward.lengthSq() < 0.0001) forward.set(0, 0, -1);
+  forward.normalize();
+
+  const size = campusBounds.getSize(new THREE.Vector3());
+  const footprint = Math.max(size.x, size.z);
+  const mapScale = Math.min(0.006, 1.0 / Math.max(footprint, 1));
+  xrPreviewRoot.scale.setScalar(mapScale);
+  const center = campusBounds.getCenter(new THREE.Vector3());
+  const target = viewer.clone().addScaledVector(forward, 1.5);
+  xrPreviewRoot.position.set(
+    target.x - center.x * mapScale,
+    viewer.y - campusBounds.min.y * mapScale,
+    target.z - center.z * mapScale
+  );
 }
 
 function setRouteStatus() {
@@ -310,6 +375,13 @@ function refreshControls() {
   changeDestinationButton.disabled = !modelRouteAvailable;
   routeModeButton.disabled = !modelRouteAvailable ||
     (routeMode === "campus" && !PROTOTYPE_INTERIOR_DESTINATIONS.has(selectedDestination.id));
+  refreshArControl();
+}
+
+function refreshArControl() {
+  xrPreviewButton.disabled = xrStartPending || (!xrSession && (
+    !immersiveArCapability.supported || !modelReady || !handoffReady
+  ));
 }
 
 function createSessionId() {
@@ -748,15 +820,20 @@ function advanceNavigation(deltaTime) {
     const forward = route[route.length - 1].position.clone().sub(previous);
     forward.y = 0;
     if (forward.lengthSq() > 0.001) forward.normalize();
-    setCameraForRoute(currentPosition, currentPosition.clone().add(forward.multiplyScalar(2)), false);
+    setCameraForRoute(currentPosition, currentPosition.clone().add(forward.multiplyScalar(2)), false, deltaTime);
   } else if (next) {
-    setCameraForRoute(currentPosition, next.position, false);
+    setCameraForRoute(currentPosition, next.position, false, deltaTime);
   }
 }
 
 function frame() {
   const deltaTime = clock.getDelta();
   advanceNavigation(deltaTime);
+  if (routePositionMarker && handoffReady && route.length) {
+    const markerPosition = currentPosition || route[0].position;
+    routePositionMarker.visible = true;
+    routePositionMarker.position.copy(markerPosition).add(new THREE.Vector3(0, 0.7, 0));
+  }
   renderer.render(scene, camera);
 }
 
@@ -921,9 +998,10 @@ async function startXrPreview() {
       xrPreviewRoot.rotation.set(0, 0, 0);
       xrPreviewRoot.scale.setScalar(1);
       controlPanelElement.classList.remove("xr-active");
+      setPanelExpanded(false);
       scene.background = new THREE.Color(0x081722);
       xrPreviewButton.textContent = "OPEN AR";
-      xrPreviewButton.disabled = !immersiveArCapability.supported;
+      refreshArControl();
       arStatusElement.textContent = "Immersive AR preview ended. Virtual 3D navigation remains available without AR.";
       setNotice("Immersive AR preview ended. Virtual 3D navigation remains available without AR.", "");
     }, { once: true });
@@ -938,22 +1016,10 @@ async function startXrPreview() {
     renderer.xr.setReferenceSpaceType(referenceSpaceType);
     await renderer.xr.setSession(session);
     scene.background = null;
-    xrPreviewRoot.scale.setScalar(0.015);
-    const xrCamera = renderer.xr.getCamera(camera);
-    xrCamera.updateMatrixWorld(true);
-    const viewer = new THREE.Vector3();
-    const forward = new THREE.Vector3();
-    xrCamera.getWorldPosition(viewer);
-    xrCamera.getWorldDirection(forward);
-    const target = viewer.clone().add(forward.multiplyScalar(2.2));
-    const bounds = campusBounds || new THREE.Box3().setFromObject(campusRoot);
-    const center = bounds.getCenter(new THREE.Vector3());
-    xrPreviewRoot.position.set(
-      target.x - center.x * 0.015,
-      viewer.y - bounds.min.y * 0.015,
-      target.z - center.z * 0.015
-    );
+    placeArMapFromViewer();
     controlPanelElement.classList.add("xr-active");
+    panelToggleButton.textContent = "RECENTER MAP";
+    panelToggleButton.setAttribute("aria-label", "Place the campus map in front of the camera again");
     xrPreviewButton.textContent = "EXIT AR";
     xrPreviewButton.disabled = false;
     arStatusElement.textContent = "Immersive AR session is active. Model scale and placement are illustrative and not campus-aligned.";
@@ -965,13 +1031,15 @@ async function startXrPreview() {
     xrSession = null;
     renderer.xr.enabled = false;
     controlPanelElement.classList.remove("xr-active");
+    setPanelExpanded(false);
     scene.background = new THREE.Color(0x081722);
     xrPreviewButton.textContent = "OPEN AR";
-    xrPreviewButton.disabled = !immersiveArCapability.supported;
+    refreshArControl();
     arStatusElement.textContent = "Immersive AR session could not start: " + error.message + ". Virtual 3D navigation remains available without AR.";
     setNotice("Could not start immersive AR: " + error.message + ". Virtual 3D navigation remains available without AR.", "warning");
   } finally {
     xrStartPending = false;
+    refreshArControl();
   }
 }
 
@@ -991,7 +1059,7 @@ async function checkOptionalAr() {
       " Virtual 3D navigation remains available without AR.";
     return;
   }
-  xrPreviewButton.disabled = false;
+  refreshArControl();
   arStatusElement.textContent = "Immersive AR preview is available. Model placement is illustrative and not campus-aligned.";
 }
 
@@ -999,7 +1067,14 @@ async function initialize() {
   resize();
   setPanelExpanded(!window.matchMedia("(max-width: 759px)").matches);
   window.addEventListener("resize", resize);
-  panelToggleButton.addEventListener("click", () => setPanelExpanded(panelDetailsElement.hidden));
+  panelToggleButton.addEventListener("click", () => {
+    if (xrSession) {
+      placeArMapFromViewer();
+      setToast("Campus route map centered in front of the camera");
+    } else {
+      setPanelExpanded(panelDetailsElement.hidden);
+    }
+  });
   startButton.addEventListener("click", startRoute);
   pauseButton.addEventListener("click", () => {
     if (running && hasStarted) {
@@ -1026,8 +1101,8 @@ async function initialize() {
 
   try {
     const [routeResponse, obstaclesResponse] = await Promise.all([
-      fetch("./route-data.json?v=4.7-mobile-stability"),
-      fetch("./campus-building-obstacles.json?v=4.7-mobile-stability")
+      fetch("./route-data.json?v=4.8-smooth-route-camera"),
+      fetch("./campus-building-obstacles.json?v=4.8-smooth-route-camera")
     ]);
     if (!routeResponse.ok) throw new Error("Could not load the campus route catalogue (" + routeResponse.status + ").");
     if (!obstaclesResponse.ok) throw new Error("Could not load the imported campus building mesh (" + obstaclesResponse.status + ").");
@@ -1092,8 +1167,8 @@ async function initialize() {
   try {
     if (!routeData) {
       const [routeResponse, obstaclesResponse] = await Promise.all([
-        fetch("./route-data.json?v=4.7-mobile-stability"),
-        fetch("./campus-building-obstacles.json?v=4.7-mobile-stability")
+        fetch("./route-data.json?v=4.8-smooth-route-camera"),
+        fetch("./campus-building-obstacles.json?v=4.8-smooth-route-camera")
       ]);
       if (!routeResponse.ok) throw new Error("Could not load the campus route catalogue (" + routeResponse.status + ").");
       if (!obstaclesResponse.ok) throw new Error("Could not load the imported campus building mesh (" + obstaclesResponse.status + ").");

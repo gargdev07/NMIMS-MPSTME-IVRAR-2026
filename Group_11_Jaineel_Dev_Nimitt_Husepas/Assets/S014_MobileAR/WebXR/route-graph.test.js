@@ -491,7 +491,7 @@ test("campus route checks for a clear side step before stopping at model geometr
   assert.match(script, /function isBlockedByProjectedCampusMeshes\(from, to\)/);
   assert.match(script, /function pointInObstacleTriangle\(x, z, triangle\)/);
   assert.match(script, /function pointToObstacleEdgeDistance\(x, z, ax, az, bx, bz\)/);
-  assert.match(script, /campus-building-obstacles\.json\?v=4\.7-mobile-stability/);
+  assert.match(script, /campus-building-obstacles\.json\?v=4\.8-smooth-route-camera/);
   assert.doesNotMatch(script, /isBlockedByNamedBuildingBounds/);
   assert.match(script, /function findCampusObstacleDetour\(from, target\)/);
   assert.match(script, /if \(!isBlockedByCampus\(from, candidate\.point\)\) return candidate\.point/);
@@ -524,5 +524,21 @@ test("immersive AR uses a floor-relative reference space when the phone provides
   assert.match(handler, /await session\.requestReferenceSpace\("local-floor"\)/);
   assert.match(handler, /renderer\.xr\.setReferenceSpaceType\(referenceSpaceType\)/);
   assert.match(handler, /root:\s*controlPanelElement/);
-  assert.match(handler, /viewer\.y - bounds\.min\.y \* 0\.015/);
+  assert.match(script, /function placeArMapFromViewer\(\)/);
+  assert.match(script, /const mapScale = Math\.min\(0\.006, 1\.0 \/ Math\.max\(footprint, 1\)\)/);
+  assert.match(script, /viewer\.y - campusBounds\.min\.y \* mapScale/);
+  assert.match(script, /target\.x - center\.x \* mapScale/);
+  assert.match(script, /panelToggleButton\.textContent = "RECENTER MAP"/);
+  assert.match(script, /placeArMapFromViewer\(\);\s*setToast\("Campus route map centered in front of the camera"\)/);
+});
+
+test("virtual route camera follows a smooth horizontal look-ahead without pitching into the pavement", async () => {
+  const script = await readFile(new URL("./virtual-campus.js", import.meta.url), "utf8");
+  assert.match(script, /const cameraLookAheadDistance = 5/);
+  assert.match(script, /function getRouteCameraLookAhead\(position, firstIndex, distanceAhead\)/);
+  assert.match(script, /const desiredForward = lookAhead\.sub\(position\);\s*desiredForward\.y = 0/);
+  assert.match(script, /1 - Math\.exp\(-2\.5 \* Math\.max\(0, deltaTime\)\)/);
+  assert.match(script, /1 - Math\.exp\(-5 \* Math\.max\(0, deltaTime\)\)/);
+  assert.match(script, /const target = eye\.clone\(\)\.addScaledVector\(cameraForward, 6\);\s*target\.y -= 0\.12/);
+  assert.match(script, /routePositionMarker\.position\.copy\(markerPosition\)/);
 });
