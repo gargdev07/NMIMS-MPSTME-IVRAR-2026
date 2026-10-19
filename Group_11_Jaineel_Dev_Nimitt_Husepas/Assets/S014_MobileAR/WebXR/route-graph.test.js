@@ -479,18 +479,50 @@ test("immersive AR tap gives immediate feedback and prevents duplicate session r
   const handler = script.slice(start, end);
   assert.match(handler, /if \(xrStartPending\) return/);
   assert.ok(handler.indexOf("xrStartPending = true") < handler.indexOf("requestImmersiveArSession(window"));
-  assert.ok(handler.indexOf("STARTING REAL IMMERSIVE AR") < handler.indexOf("requestImmersiveArSession(window"));
+  assert.ok(handler.indexOf("STARTING AR") < handler.indexOf("requestImmersiveArSession(window"));
   assert.ok(handler.indexOf("requestImmersiveArSession(window") < handler.indexOf("await sessionRequest"));
   assert.match(handler, /finally\s*\{\s*xrStartPending = false;/);
 });
 
 test("campus route checks for a clear side step before stopping at model geometry", async () => {
   const script = await readFile(new URL("./virtual-campus.js", import.meta.url), "utf8");
-  assert.match(script, /if \(routeMode === "campus"\) return isBlockedByNamedBuildingBounds\(from, to\)/);
-  assert.match(script, /function isBlockedByNamedBuildingBounds\(from, to\)/);
+  assert.match(script, /if \(routeMode === "campus"\) return isBlockedByProjectedCampusMeshes\(from, to\)/);
+  assert.match(script, /function buildCampusObstacleIndex\(data\)/);
+  assert.match(script, /function isBlockedByProjectedCampusMeshes\(from, to\)/);
+  assert.match(script, /function pointInObstacleTriangle\(x, z, triangle\)/);
+  assert.match(script, /function pointToObstacleEdgeDistance\(x, z, ax, az, bx, bz\)/);
+  assert.match(script, /campus-building-obstacles\.json\?v=4\.7-mobile-stability/);
+  assert.doesNotMatch(script, /isBlockedByNamedBuildingBounds/);
   assert.match(script, /function findCampusObstacleDetour\(from, target\)/);
   assert.match(script, /if \(!isBlockedByCampus\(from, candidate\.point\)\) return candidate\.point/);
   assert.match(script, /route\.splice\(routeIndex, 0, waypoint/);
   assert.match(script, /routeDetourCount >= 12/);
   assert.match(script, /virtual camera did not pass through it/i);
+});
+
+test("mobile wayfinding keeps the campus visible behind a compact, accessible panel", async () => {
+  const html = await readFile(new URL("./index.html", import.meta.url), "utf8");
+  const styles = await readFile(new URL("./styles.css", import.meta.url), "utf8");
+  const script = await readFile(new URL("./virtual-campus.js", import.meta.url), "utf8");
+  assert.match(html, /id="panelToggle"[^>]*aria-expanded="false"[^>]*aria-controls="panelDetails"/);
+  assert.match(html, /id="panelDetails" class="panelDetails" hidden/);
+  assert.match(html, /id="startRoute"/);
+  assert.match(html, /id="xrPreview"/);
+  assert.match(script, /matchMedia\("\(max-width: 759px\)"\)/);
+  assert.match(script, /function setPanelExpanded\(expanded\)/);
+  assert.match(script, /setPanelExpanded\(false\)/);
+  assert.match(styles, /\.panel\.collapsed\s*\{\s*overflow:\s*hidden/s);
+  assert.match(styles, /\.panelDetails\[hidden\]\s*\{\s*display:\s*none/s);
+});
+
+test("immersive AR uses a floor-relative reference space when the phone provides one", async () => {
+  const script = await readFile(new URL("./virtual-campus.js", import.meta.url), "utf8");
+  const start = script.indexOf("async function startXrPreview()");
+  const end = script.indexOf("async function checkOptionalAr()", start);
+  const handler = script.slice(start, end);
+  assert.match(handler, /optionalFeatures:\s*\["local-floor",\s*"dom-overlay"\]/);
+  assert.match(handler, /await session\.requestReferenceSpace\("local-floor"\)/);
+  assert.match(handler, /renderer\.xr\.setReferenceSpaceType\(referenceSpaceType\)/);
+  assert.match(handler, /root:\s*controlPanelElement/);
+  assert.match(handler, /viewer\.y - bounds\.min\.y \* 0\.015/);
 });

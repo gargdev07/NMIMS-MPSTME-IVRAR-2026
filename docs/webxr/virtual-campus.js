@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "./vendor/examples/jsm/loaders/GLTFLoader.js";
 import { createRepresentativeInterior } from "./representative-interior.js";
 import { auditDestinationRoutes, findShortestPath, validateNavigationGraph } from "./route-graph.js";
-import { checkImmersiveArSupport, requestImmersiveArSession } from "./xr-support.js?v=4.6-campus-routing-ready";
+import { checkImmersiveArSupport, requestImmersiveArSession } from "./xr-support.js?v=4.7-mobile-stability";
 
 const canvas = document.getElementById("campusView");
 const destinationElement = document.getElementById("destination");
@@ -19,6 +19,9 @@ const currentFloorElement = document.getElementById("currentFloor");
 const noticeElement = document.getElementById("notice");
 const arStatusElement = document.getElementById("arStatus");
 const toastElement = document.getElementById("toast");
+const controlPanelElement = document.getElementById("controlPanel");
+const panelToggleButton = document.getElementById("panelToggle");
+const panelDetailsElement = document.getElementById("panelDetails");
 const startButton = document.getElementById("startRoute");
 const xrPreviewButton = document.getElementById("xrPreview");
 const routeModeButton = document.getElementById("routeMode");
@@ -88,6 +91,15 @@ let pendingStart = false;
 let campusModelFailed = false;
 let routeDetourCount = 0;
 let nextDetourId = 1;
+let campusObstacleBins = new Map();
+let campusObstacleMeshes = [];
+
+function setPanelExpanded(expanded) {
+  panelDetailsElement.hidden = !expanded;
+  panelToggleButton.setAttribute("aria-expanded", String(expanded));
+  panelToggleButton.textContent = expanded ? "LESS OPTIONS" : "MORE OPTIONS";
+  controlPanelElement.classList.toggle("collapsed", !expanded);
+}
 
 function setNotice(message, kind) {
   noticeElement.textContent = message;
@@ -317,6 +329,7 @@ function startRoute() {
     setNotice("The campus model failed to load, so virtual movement cannot start.", "warning");
     return;
   }
+  setPanelExpanded(false);
   if (!modelReady) {
     pendingStart = true;
     startButton.textContent = "STARTING WHEN CAMPUS LOADS…";
@@ -519,7 +532,7 @@ function focusCampusOverview() {
 }
 
 function isBlockedByCampus(from, to) {
-  if (routeMode === "campus") return isBlockedByNamedBuildingBounds(from, to);
+  if (routeMode === "campus") return isBlockedByProjectedCampusMeshes(from, to);
   const delta = to.clone().sub(from);
   const length = delta.length();
   if (length < 0.01 || (campusCollisionObjects.length === 0 && interiorCollisionObjects.length === 0)) return false;
@@ -548,26 +561,79 @@ function isBlockedByCampus(from, to) {
   return !!hit;
 }
 
-function isBlockedByNamedBuildingBounds(from, to) {
-  const bounds = routeData && routeData.campusGeometry && routeData.campusGeometry.buildingBoundsXZ;
-  if (!Array.isArray(bounds) || bounds.length === 0) return false;
+function buildCampusObstacleIndex(data) {
+  if (!data || !Array.isArray(data.meshes) || data.meshes.length !== 8) {
+    throw new Error("The imported campus building obstacle mesh is missing or incomplete.");
+  }
+  campusObstacleMeshes = data.meshes;
+  campusObstacleBins = new Map();
+  for (const mesh of campusObstacleMeshes) {
+    if (!mesh.id || !Array.isArray(mesh.triangles)) throw new Error("An imported building obstacle mesh is malformed.");
+    for (const triangle of mesh.triangles) {
+      if (!Array.isArray(triangle) || triangle.length !== 6 || !triangle.every(Number.isFinite)) {
+        throw new Error("An imported building obstacle triangle is malformed.");
+      }
+      const minX = Math.floor(Math.min(triangle[0], triangle[2], triangle[4]));
+      const maxX = Math.floor(Math.max(triangle[0], triangle[2], triangle[4]));
+      const minZ = Math.floor(Math.min(triangle[1], triangle[3], triangle[5]));
+      const maxZ = Math.floor(Math.max(triangle[1], triangle[3], triangle[5]));
+      for (let x = minX; x <= maxX; x++) for (let z = minZ; z <= maxZ; z++) {
+        const key = x + "," + z;
+        let bin = campusObstacleBins.get(key);
+        if (!bin) campusObstacleBins.set(key, bin = []);
+        bin.push({ id: mesh.id, triangle });
+      }
+    }
+  }
+}
+
+function pointInObstacleTriangle(x, z, triangle) {
+  const [ax, az, bx, bz, cx, cz] = triangle;
+  const denominator = (bz - cz) * (ax - cx) + (cx - bx) * (az - cz);
+  if (Math.abs(denominator) < 1e-9) return false;
+  const a = ((bz - cz) * (x - cx) + (cx - bx) * (z - cz)) / denominator;
+  const b = ((cz - az) * (x - cx) + (ax - cx) * (z - cz)) / denominator;
+  const c = 1 - a - b;
+  return a >= -1e-6 && b >= -1e-6 && c >= -1e-6;
+}
+
+function pointToObstacleEdgeDistance(x, z, ax, az, bx, bz) {
+  const dx = bx - ax;
+  const dz = bz - az;
+  const lengthSq = dx * dx + dz * dz;
+  const t = lengthSq > 0 ? Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / lengthSq)) : 0;
+  return Math.hypot(x - (ax + t * dx), z - (az + t * dz));
+}
+
+function isNearObstacleTriangle(x, z, triangle, clearance) {
+  if (pointInObstacleTriangle(x, z, triangle)) return true;
+  return pointToObstacleEdgeDistance(x, z, triangle[0], triangle[1], triangle[2], triangle[3]) <= clearance ||
+    pointToObstacleEdgeDistance(x, z, triangle[2], triangle[3], triangle[4], triangle[5]) <= clearance ||
+    pointToObstacleEdgeDistance(x, z, triangle[4], triangle[5], triangle[0], triangle[1]) <= clearance;
+}
+
+function isDoorwayPortal(meshId, x, z) {
+  return meshId.includes("Building_001") && x >= 40 && x <= 50 && z >= 15 && z <= 24;
+}
+
+function isBlockedByProjectedCampusMeshes(from, to) {
+  if (campusObstacleBins.size === 0) {
+    lastBlock = { object: "unavailable imported building obstacle mesh", point: [from.x, from.y + 0.88, from.z], distance: 0 };
+    return true;
+  }
   const delta = to.clone().sub(from);
-  const steps = Math.max(1, Math.ceil(delta.length() / 0.5));
-  const margin = 1.0;
+  const steps = Math.max(1, Math.ceil(delta.length() / 0.25));
+  const clearance = 0.3;
   for (let step = 1; step <= steps; step++) {
     const t = step / steps;
     const x = from.x + delta.x * t;
     const z = from.z + delta.z * t;
-    const building = bounds.find(item =>
-      x >= item.min[0] - margin && x <= item.max[0] + margin &&
-      z >= item.min[1] - margin && z <= item.max[1] + margin
+    const candidates = campusObstacleBins.get(Math.floor(x) + "," + Math.floor(z)) || [];
+    const hit = candidates.find(candidate =>
+      !isDoorwayPortal(candidate.id, x, z) && isNearObstacleTriangle(x, z, candidate.triangle, clearance)
     );
-    if (!building) continue;
-    lastBlock = {
-      object: "known building footprint " + building.id,
-      point: [x, from.y + 0.88, z],
-      distance: delta.length() * t
-    };
+    if (!hit) continue;
+    lastBlock = { object: hit.id, point: [x, from.y + 0.88, z], distance: delta.length() * t };
     return true;
   }
   lastBlock = null;
@@ -833,8 +899,9 @@ async function startXrPreview() {
     return;
   }
   xrStartPending = true;
+  setPanelExpanded(false);
   xrPreviewButton.disabled = true;
-  xrPreviewButton.textContent = "STARTING REAL IMMERSIVE AR…";
+  xrPreviewButton.textContent = "STARTING AR…";
   arStatusElement.textContent = "Tap received. Requesting the immersive AR camera session…";
   setNotice("Starting the immersive AR preview…", "success");
   try {
@@ -843,12 +910,32 @@ async function startXrPreview() {
     const sessionRequest = requestImmersiveArSession(window, {
       requiredFeatures: ["local"],
       optionalFeatures: ["local-floor", "dom-overlay"],
-      domOverlay: { root: document.body }
+      domOverlay: { root: controlPanelElement }
     });
     const session = await sessionRequest;
     xrSession = session;
+    session.addEventListener("end", () => {
+      xrSession = null;
+      renderer.xr.enabled = false;
+      xrPreviewRoot.position.set(0, 0, 0);
+      xrPreviewRoot.rotation.set(0, 0, 0);
+      xrPreviewRoot.scale.setScalar(1);
+      controlPanelElement.classList.remove("xr-active");
+      scene.background = new THREE.Color(0x081722);
+      xrPreviewButton.textContent = "OPEN AR";
+      xrPreviewButton.disabled = !immersiveArCapability.supported;
+      arStatusElement.textContent = "Immersive AR preview ended. Virtual 3D navigation remains available without AR.";
+      setNotice("Immersive AR preview ended. Virtual 3D navigation remains available without AR.", "");
+    }, { once: true });
+    let referenceSpaceType = "local";
+    try {
+      await session.requestReferenceSpace("local-floor");
+      referenceSpaceType = "local-floor";
+    } catch (_) {
+      // Some mobile AR browsers expose only the required `local` space.
+    }
     renderer.xr.enabled = true;
-    renderer.xr.setReferenceSpaceType("local");
+    renderer.xr.setReferenceSpaceType(referenceSpaceType);
     await renderer.xr.setSession(session);
     scene.background = null;
     xrPreviewRoot.scale.setScalar(0.015);
@@ -858,33 +945,28 @@ async function startXrPreview() {
     const forward = new THREE.Vector3();
     xrCamera.getWorldPosition(viewer);
     xrCamera.getWorldDirection(forward);
-    const target = viewer.add(forward.multiplyScalar(2.2)).add(new THREE.Vector3(0, -0.35, 0));
-    const center = campusBounds ? campusBounds.getCenter(new THREE.Vector3()) : new THREE.Vector3();
-    xrPreviewRoot.position.copy(target).addScaledVector(center, -0.015);
-    xrPreviewButton.textContent = "EXIT IMMERSIVE AR";
+    const target = viewer.clone().add(forward.multiplyScalar(2.2));
+    const bounds = campusBounds || new THREE.Box3().setFromObject(campusRoot);
+    const center = bounds.getCenter(new THREE.Vector3());
+    xrPreviewRoot.position.set(
+      target.x - center.x * 0.015,
+      viewer.y - bounds.min.y * 0.015,
+      target.z - center.z * 0.015
+    );
+    controlPanelElement.classList.add("xr-active");
+    xrPreviewButton.textContent = "EXIT AR";
     xrPreviewButton.disabled = false;
     arStatusElement.textContent = "Immersive AR session is active. Model scale and placement are illustrative and not campus-aligned.";
     setNotice("Immersive AR preview opened. Model scale and placement are illustrative; no surveyed campus origin is available.", "warning");
-    session.addEventListener("end", () => {
-      xrSession = null;
-      renderer.xr.enabled = false;
-      xrPreviewRoot.position.set(0, 0, 0);
-      xrPreviewRoot.rotation.set(0, 0, 0);
-      xrPreviewRoot.scale.setScalar(1);
-      scene.background = new THREE.Color(0x081722);
-      xrPreviewButton.textContent = "OPEN IMMERSIVE AR PREVIEW";
-      xrPreviewButton.disabled = !immersiveArCapability.supported;
-      arStatusElement.textContent = "Immersive AR preview ended. Virtual 3D navigation remains available without AR.";
-      setNotice("Immersive AR preview ended. Virtual 3D navigation remains available without AR.", "");
-    }, { once: true });
   } catch (error) {
     if (xrSession) {
       try { await xrSession.end(); } catch (_) { /* Session teardown may already be in progress. */ }
     }
     xrSession = null;
     renderer.xr.enabled = false;
+    controlPanelElement.classList.remove("xr-active");
     scene.background = new THREE.Color(0x081722);
-    xrPreviewButton.textContent = "OPEN IMMERSIVE AR PREVIEW";
+    xrPreviewButton.textContent = "OPEN AR";
     xrPreviewButton.disabled = !immersiveArCapability.supported;
     arStatusElement.textContent = "Immersive AR session could not start: " + error.message + ". Virtual 3D navigation remains available without AR.";
     setNotice("Could not start immersive AR: " + error.message + ". Virtual 3D navigation remains available without AR.", "warning");
@@ -915,7 +997,9 @@ async function checkOptionalAr() {
 
 async function initialize() {
   resize();
+  setPanelExpanded(!window.matchMedia("(max-width: 759px)").matches);
   window.addEventListener("resize", resize);
+  panelToggleButton.addEventListener("click", () => setPanelExpanded(panelDetailsElement.hidden));
   startButton.addEventListener("click", startRoute);
   pauseButton.addEventListener("click", () => {
     if (running && hasStarted) {
@@ -941,9 +1025,14 @@ async function initialize() {
   checkOptionalAr();
 
   try {
-  const [routeResponse] = await Promise.all([fetch("./route-data.json?v=4.6-campus-routing-ready")]);
+    const [routeResponse, obstaclesResponse] = await Promise.all([
+      fetch("./route-data.json?v=4.7-mobile-stability"),
+      fetch("./campus-building-obstacles.json?v=4.7-mobile-stability")
+    ]);
     if (!routeResponse.ok) throw new Error("Could not load the campus route catalogue (" + routeResponse.status + ").");
+    if (!obstaclesResponse.ok) throw new Error("Could not load the imported campus building mesh (" + obstaclesResponse.status + ").");
     routeData = await routeResponse.json();
+    buildCampusObstacleIndex(await obstaclesResponse.json());
     validateRouteData(routeData);
     const handoff = readHandoff(routeData);
     handoffPayload = handoff.payload;
@@ -1002,9 +1091,14 @@ async function initialize() {
 
   try {
     if (!routeData) {
-      const routeResponse = await fetch("./route-data.json?v=4.6-campus-routing-ready");
+      const [routeResponse, obstaclesResponse] = await Promise.all([
+        fetch("./route-data.json?v=4.7-mobile-stability"),
+        fetch("./campus-building-obstacles.json?v=4.7-mobile-stability")
+      ]);
       if (!routeResponse.ok) throw new Error("Could not load the campus route catalogue (" + routeResponse.status + ").");
+      if (!obstaclesResponse.ok) throw new Error("Could not load the imported campus building mesh (" + obstaclesResponse.status + ").");
       routeData = await routeResponse.json();
+      buildCampusObstacleIndex(await obstaclesResponse.json());
       validateRouteData(routeData);
     }
     await loadCampusModel();

@@ -74,6 +74,52 @@ button:focus-visible {
   backdrop-filter: blur(12px);
 }
 
+.panelDetails[hidden] { display: none; }
+
+.routeSummary {
+  margin: 0.35rem 0 0.55rem;
+  border: 1px solid #20455a;
+  border-radius: 0.7rem;
+  padding: 0.55rem 0.7rem;
+  background: #0c2433;
+}
+
+.routeSummary #instruction {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 0.87rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.summaryMetrics {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.35rem;
+  color: #b3cedb;
+  font-size: 0.75rem;
+}
+
+.summaryMetrics span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.summaryMetrics strong { color: #e9f7ff; }
+
+.primaryControls { display: grid; grid-template-columns: minmax(0, 1fr) minmax(5rem, 0.58fr); gap: 0.45rem; }
+.primaryControls button:first-child { color: #051721; border-color: #72e9ff; background: #72e9ff; }
+
+.panelToggle {
+  width: 100%;
+  min-height: 38px;
+  margin-top: 0.4rem;
+  padding-block: 0.45rem;
+  background: #102b3a;
+  font-size: 0.76rem;
+}
+
+.panelDetails { max-height: min(48dvh, 28rem); margin-top: 0.45rem; overflow-y: auto; overscroll-behavior: contain; }
+
 .eyebrow {
   margin: 0 0 0.25rem;
   color: #80e9ff;
@@ -133,6 +179,8 @@ header > p:last-child {
   font-weight: 700;
   line-height: 1.3;
 }
+
+.routeSummary #instruction { margin-top: 0; }
 
 .controls > button {
   width: 100%;
@@ -277,6 +325,18 @@ header > p:last-child {
     bottom: 1.2rem;
     margin: 0;
   }
+
+  .panelDetails { max-height: min(54dvh, 32rem); }
+}
+
+@media (max-width: 759px) {
+  .panel { max-height: min(34dvh, 18rem); padding: 0.65rem; }
+  .panel:not(.collapsed) { max-height: min(82dvh, 48rem); overflow: hidden; }
+  .panel.collapsed { overflow: hidden; }
+  .panel header .eyebrow { display: none; }
+  .panel h1 { overflow: hidden; font-size: 1.15rem; text-overflow: ellipsis; white-space: nowrap; }
+  .panel header > p:last-child { margin: 0.15rem 0 0.35rem; font-size: 0.75rem; }
+  .panel.xr-active { background: rgb(5 18 29 / 72%); backdrop-filter: blur(5px); }
 }
 
 @media (max-height: 700px) {
