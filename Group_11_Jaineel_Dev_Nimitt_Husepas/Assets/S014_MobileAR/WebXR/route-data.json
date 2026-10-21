@@ -25071,6 +25071,182 @@
         "kind": "prototype-interior-waypoint"
       },
       {
+        "id": "prototype-stair-ground-tread-01",
+        "position": [
+          -58.5,
+          2.625,
+          -45.40165
+        ],
+        "floor": "Ground",
+        "label": "Prototype stair tread 1 of 8",
+        "kind": "prototype-stair-tread-approach"
+      },
+      {
+        "id": "prototype-stair-ground-tread-02",
+        "position": [
+          -58.5,
+          2.75,
+          -45.71415
+        ],
+        "floor": "Ground",
+        "label": "Prototype stair tread 2 of 8",
+        "kind": "prototype-stair-tread-approach"
+      },
+      {
+        "id": "prototype-stair-ground-tread-03",
+        "position": [
+          -58.5,
+          2.875,
+          -46.02665
+        ],
+        "floor": "Ground",
+        "label": "Prototype stair tread 3 of 8",
+        "kind": "prototype-stair-tread-approach"
+      },
+      {
+        "id": "prototype-stair-ground-tread-04",
+        "position": [
+          -58.5,
+          3,
+          -46.33915
+        ],
+        "floor": "Ground",
+        "label": "Prototype stair tread 4 of 8",
+        "kind": "prototype-stair-tread-approach"
+      },
+      {
+        "id": "prototype-stair-ground-tread-05",
+        "position": [
+          -58.5,
+          3.125,
+          -46.65165
+        ],
+        "floor": "Ground",
+        "label": "Prototype stair tread 5 of 8",
+        "kind": "prototype-stair-tread-approach"
+      },
+      {
+        "id": "prototype-stair-ground-tread-06",
+        "position": [
+          -58.5,
+          3.25,
+          -46.96415
+        ],
+        "floor": "Ground",
+        "label": "Prototype stair tread 6 of 8",
+        "kind": "prototype-stair-tread-approach"
+      },
+      {
+        "id": "prototype-stair-ground-tread-07",
+        "position": [
+          -58.5,
+          3.375,
+          -47.27665
+        ],
+        "floor": "Ground",
+        "label": "Prototype stair tread 7 of 8",
+        "kind": "prototype-stair-tread-approach"
+      },
+      {
+        "id": "prototype-stair-ground-tread-08",
+        "position": [
+          -58.5,
+          3.5,
+          -47.58915
+        ],
+        "floor": "Ground",
+        "label": "Prototype stair tread 8 of 8",
+        "kind": "prototype-stair-tread-approach"
+      },
+      {
+        "id": "prototype-stair-upper-tread-01",
+        "position": [
+          -58.28125,
+          3.75,
+          -47.7454
+        ],
+        "floor": "Ground",
+        "label": "Prototype stair tread 1 of 8",
+        "kind": "prototype-stair-tread-approach"
+      },
+      {
+        "id": "prototype-stair-upper-tread-02",
+        "position": [
+          -57.84375,
+          4,
+          -47.7454
+        ],
+        "floor": "Ground",
+        "label": "Prototype stair tread 2 of 8",
+        "kind": "prototype-stair-tread-approach"
+      },
+      {
+        "id": "prototype-stair-upper-tread-03",
+        "position": [
+          -57.40625,
+          4.25,
+          -47.7454
+        ],
+        "floor": "Ground",
+        "label": "Prototype stair tread 3 of 8",
+        "kind": "prototype-stair-tread-approach"
+      },
+      {
+        "id": "prototype-stair-upper-tread-04",
+        "position": [
+          -56.96875,
+          4.5,
+          -47.7454
+        ],
+        "floor": "Ground",
+        "label": "Prototype stair tread 4 of 8",
+        "kind": "prototype-stair-tread-approach"
+      },
+      {
+        "id": "prototype-stair-upper-tread-05",
+        "position": [
+          -56.53125,
+          4.75,
+          -47.7454
+        ],
+        "floor": "Ground",
+        "label": "Prototype stair tread 5 of 8",
+        "kind": "prototype-stair-tread-approach"
+      },
+      {
+        "id": "prototype-stair-upper-tread-06",
+        "position": [
+          -56.09375,
+          5,
+          -47.7454
+        ],
+        "floor": "Ground",
+        "label": "Prototype stair tread 6 of 8",
+        "kind": "prototype-stair-tread-approach"
+      },
+      {
+        "id": "prototype-stair-upper-tread-07",
+        "position": [
+          -55.65625,
+          5.25,
+          -47.7454
+        ],
+        "floor": "Ground",
+        "label": "Prototype stair tread 7 of 8",
+        "kind": "prototype-stair-tread-approach"
+      },
+      {
+        "id": "prototype-stair-upper-tread-08",
+        "position": [
+          -55.21875,
+          5.5,
+          -47.7454
+        ],
+        "floor": "Ground",
+        "label": "Prototype stair tread 8 of 8",
+        "kind": "prototype-stair-tread-approach"
+      },
+      {
         "id": "campus-destination-lab-101",
         "position": [
           -58,
@@ -72298,15 +72474,127 @@
         "kind": "prototype-interior"
       },
       {
-        "id": "stair-bottom-to-mid",
+        "id": "prototype-stair-bottom-to-prototype-stair-ground-tread-01",
         "from": "prototype-stair-bottom",
+        "to": "prototype-stair-ground-tread-01",
+        "walkable": true,
+        "kind": "stair"
+      },
+      {
+        "id": "prototype-stair-ground-tread-01-to-prototype-stair-ground-tread-02",
+        "from": "prototype-stair-ground-tread-01",
+        "to": "prototype-stair-ground-tread-02",
+        "walkable": true,
+        "kind": "stair"
+      },
+      {
+        "id": "prototype-stair-ground-tread-02-to-prototype-stair-ground-tread-03",
+        "from": "prototype-stair-ground-tread-02",
+        "to": "prototype-stair-ground-tread-03",
+        "walkable": true,
+        "kind": "stair"
+      },
+      {
+        "id": "prototype-stair-ground-tread-03-to-prototype-stair-ground-tread-04",
+        "from": "prototype-stair-ground-tread-03",
+        "to": "prototype-stair-ground-tread-04",
+        "walkable": true,
+        "kind": "stair"
+      },
+      {
+        "id": "prototype-stair-ground-tread-04-to-prototype-stair-ground-tread-05",
+        "from": "prototype-stair-ground-tread-04",
+        "to": "prototype-stair-ground-tread-05",
+        "walkable": true,
+        "kind": "stair"
+      },
+      {
+        "id": "prototype-stair-ground-tread-05-to-prototype-stair-ground-tread-06",
+        "from": "prototype-stair-ground-tread-05",
+        "to": "prototype-stair-ground-tread-06",
+        "walkable": true,
+        "kind": "stair"
+      },
+      {
+        "id": "prototype-stair-ground-tread-06-to-prototype-stair-ground-tread-07",
+        "from": "prototype-stair-ground-tread-06",
+        "to": "prototype-stair-ground-tread-07",
+        "walkable": true,
+        "kind": "stair"
+      },
+      {
+        "id": "prototype-stair-ground-tread-07-to-prototype-stair-ground-tread-08",
+        "from": "prototype-stair-ground-tread-07",
+        "to": "prototype-stair-ground-tread-08",
+        "walkable": true,
+        "kind": "stair"
+      },
+      {
+        "id": "prototype-stair-ground-tread-08-to-prototype-stair-mid",
+        "from": "prototype-stair-ground-tread-08",
         "to": "prototype-stair-mid",
         "walkable": true,
         "kind": "stair"
       },
       {
-        "id": "stair-mid-to-top",
+        "id": "prototype-stair-mid-to-prototype-stair-upper-tread-01",
         "from": "prototype-stair-mid",
+        "to": "prototype-stair-upper-tread-01",
+        "walkable": true,
+        "kind": "stair"
+      },
+      {
+        "id": "prototype-stair-upper-tread-01-to-prototype-stair-upper-tread-02",
+        "from": "prototype-stair-upper-tread-01",
+        "to": "prototype-stair-upper-tread-02",
+        "walkable": true,
+        "kind": "stair"
+      },
+      {
+        "id": "prototype-stair-upper-tread-02-to-prototype-stair-upper-tread-03",
+        "from": "prototype-stair-upper-tread-02",
+        "to": "prototype-stair-upper-tread-03",
+        "walkable": true,
+        "kind": "stair"
+      },
+      {
+        "id": "prototype-stair-upper-tread-03-to-prototype-stair-upper-tread-04",
+        "from": "prototype-stair-upper-tread-03",
+        "to": "prototype-stair-upper-tread-04",
+        "walkable": true,
+        "kind": "stair"
+      },
+      {
+        "id": "prototype-stair-upper-tread-04-to-prototype-stair-upper-tread-05",
+        "from": "prototype-stair-upper-tread-04",
+        "to": "prototype-stair-upper-tread-05",
+        "walkable": true,
+        "kind": "stair"
+      },
+      {
+        "id": "prototype-stair-upper-tread-05-to-prototype-stair-upper-tread-06",
+        "from": "prototype-stair-upper-tread-05",
+        "to": "prototype-stair-upper-tread-06",
+        "walkable": true,
+        "kind": "stair"
+      },
+      {
+        "id": "prototype-stair-upper-tread-06-to-prototype-stair-upper-tread-07",
+        "from": "prototype-stair-upper-tread-06",
+        "to": "prototype-stair-upper-tread-07",
+        "walkable": true,
+        "kind": "stair"
+      },
+      {
+        "id": "prototype-stair-upper-tread-07-to-prototype-stair-upper-tread-08",
+        "from": "prototype-stair-upper-tread-07",
+        "to": "prototype-stair-upper-tread-08",
+        "walkable": true,
+        "kind": "stair"
+      },
+      {
+        "id": "prototype-stair-upper-tread-08-to-prototype-stair-top",
+        "from": "prototype-stair-upper-tread-08",
         "to": "prototype-stair-top",
         "walkable": true,
         "kind": "stair",

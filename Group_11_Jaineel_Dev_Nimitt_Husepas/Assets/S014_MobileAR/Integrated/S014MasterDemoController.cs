@@ -873,14 +873,19 @@ namespace S014.IntegratedDemo
                 var line = campusRouteLine.AddComponent<LineRenderer>();
                 line.useWorldSpace = true;
                 line.positionCount = route.Count;
-                line.startWidth = 0.34f;
-                line.endWidth = 0.34f;
+                // Keep the route narrow and close to each walking surface so
+                // stair risers remain visible and the ribbon does not float
+                // across the stairwell opening.
+                line.startWidth = 0.09f;
+                line.endWidth = 0.09f;
                 line.startColor = new Color(1f, 0.72f, 0.12f, 1f);
                 line.endColor = new Color(0.1f, 0.85f, 1f, 1f);
                 line.material = material;
                 line.numCapVertices = 3;
+                line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                line.receiveShadows = false;
                 for (var i = 0; i < route.Count; i++)
-                    line.SetPosition(i, route[i].worldPosition + Vector3.up * 0.28f);
+                    line.SetPosition(i, route[i].worldPosition + Vector3.up * 0.12f);
             }
             for (var routeIndex = 0; routeIndex < route.Count; routeIndex++)
             {

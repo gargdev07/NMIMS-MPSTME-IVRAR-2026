@@ -495,8 +495,48 @@ nodes.push({ id: "prototype-stair-top", position: localToWorld([1.5, 3.0, 1.5]),
 nodes.push({ id: "prototype-upper-corridor", position: localToWorld([4.5, 3.0, -1.5]), floor: "First", label: "Prototype first-floor corridor (existing Unity waypoint)", kind: "prototype-interior-waypoint" });
 edges.push({ id: "ground-threshold-to-corridor", from: "prototype-ground-threshold", to: "prototype-ground-corridor", walkable: true, kind: "prototype-interior" });
 edges.push({ id: "corridor-to-stair-bottom", from: "prototype-ground-corridor", to: "prototype-stair-bottom", walkable: true, kind: "prototype-interior" });
-edges.push({ id: "stair-bottom-to-mid", from: "prototype-stair-bottom", to: "prototype-stair-mid", walkable: true, kind: "stair" });
-edges.push({ id: "stair-mid-to-top", from: "prototype-stair-mid", to: "prototype-stair-top", walkable: true, kind: "stair", floorTransition: true, targetFloor: "First" });
+
+function addStairFlight(startId, endId, start, end, count, prefix, completesFloorTransition = false) {
+  let previousId = startId;
+  const rise = end[1] - start[1];
+  for (let index = 0; index < count; index++) {
+    const centerProgress = (index + 0.5) / count;
+    const position = start.map((value, axis) => value + (end[axis] - value) * centerProgress);
+    // Match the generated stair tread tops: each tread rises at the front
+    // edge, while its center sits on that step's walking surface.
+    position[1] = start[1] + rise * (index + 1) / count;
+    const stepId = `${prefix}-${String(index + 1).padStart(2, "0")}`;
+    nodes.push({
+      id: stepId,
+      position,
+      floor: "Ground",
+      label: `Prototype stair tread ${index + 1} of ${count}`,
+      kind: "prototype-stair-tread-approach"
+    });
+    edges.push({
+      id: `${previousId}-to-${stepId}`,
+      from: previousId,
+      to: stepId,
+      walkable: true,
+      kind: "stair"
+    });
+    previousId = stepId;
+  }
+  edges.push({
+    id: `${previousId}-to-${endId}`,
+    from: previousId,
+    to: endId,
+    walkable: true,
+    kind: "stair",
+    ...(completesFloorTransition ? { floorTransition: true, targetFloor: "First" } : {})
+  });
+}
+
+const stairBottom = localToWorld([-2.0, 0, 4.0]);
+const stairMid = localToWorld([-2.0, 1.0, 1.5]);
+const stairTop = localToWorld([1.5, 3.0, 1.5]);
+addStairFlight("prototype-stair-bottom", "prototype-stair-mid", stairBottom, stairMid, 8, "prototype-stair-ground-tread");
+addStairFlight("prototype-stair-mid", "prototype-stair-top", stairMid, stairTop, 8, "prototype-stair-upper-tread", true);
 edges.push({ id: "stair-top-to-upper-corridor", from: "prototype-stair-top", to: "prototype-upper-corridor", walkable: true, kind: "prototype-interior" });
 
 const labAnchors = {

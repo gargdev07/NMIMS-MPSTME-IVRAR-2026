@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "./vendor/examples/jsm/loaders/GLTFLoader.js";
 import { createRepresentativeInterior } from "./representative-interior.js";
 import { auditDestinationRoutes, findShortestPath, validateNavigationGraph } from "./route-graph.js";
-import { checkImmersiveArSupport, requestImmersiveArSession } from "./xr-support.js?v=4.9-mobile-interior-wayfinding";
+import { checkImmersiveArSupport, requestImmersiveArSession } from "./xr-support.js?v=5.0-surface-placement-stair-routes";
 
 const canvas = document.getElementById("campusView");
 const destinationElement = document.getElementById("destination");
@@ -55,6 +55,13 @@ const routeRoot = new THREE.Group();
 const xrPreviewRoot = new THREE.Group();
 scene.add(xrPreviewRoot);
 xrPreviewRoot.add(campusRoot, routeRoot);
+const arPlacementReticle = new THREE.Mesh(
+  new THREE.RingGeometry(0.09, 0.12, 32),
+  new THREE.MeshBasicMaterial({ color: 0x80f5b0, side: THREE.DoubleSide, depthTest: true })
+);
+arPlacementReticle.rotation.x = -Math.PI / 2;
+arPlacementReticle.visible = false;
+scene.add(arPlacementReticle);
 const routeRaycaster = new THREE.Raycaster();
 const clock = new THREE.Clock();
 const eyeHeight = 1.6;
@@ -97,6 +104,8 @@ let routePositionMarker;
 let lastBlock = null;
 let xrSession = null;
 let xrStartPending = false;
+let xrHitTestSource = null;
+let arMapPlaced = false;
 // Campus-scale routing is the real phone destination flow. Keep the small
 // representative cutaway as an explicit optional preview only.
 let routeMode = "campus";
@@ -266,7 +275,7 @@ function updateRouteGraphics() {
     color: routeColor,
     transparent: true,
     opacity: 0.9,
-    depthTest: false
+    depthTest: true
   }));
   line.renderOrder = 10;
   routeRoot.add(line);
@@ -277,7 +286,7 @@ function updateRouteGraphics() {
       new THREE.SphereGeometry(index === route.length - 1 ? 0.28 : 0.17, 10, 8),
       new THREE.MeshBasicMaterial({
         color: index === route.length - 1 ? 0xffd479 : routeColor,
-        depthTest: false
+        depthTest: true
       })
     );
     marker.position.copy(point.position).add(new THREE.Vector3(0, 0.16, 0));
@@ -287,7 +296,7 @@ function updateRouteGraphics() {
 
   routePositionMarker = new THREE.Mesh(
     new THREE.SphereGeometry(1.1, 14, 10),
-    new THREE.MeshBasicMaterial({ color: 0x8dffb0, depthTest: false })
+    new THREE.MeshBasicMaterial({ color: 0x8dffb0, depthTest: true })
   );
   routePositionMarker.renderOrder = 15;
   routeRoot.add(routePositionMarker);
@@ -346,15 +355,56 @@ function placeArMapFromViewer() {
 
   const size = campusBounds.getSize(new THREE.Vector3());
   const footprint = Math.max(size.x, size.z);
-  const mapScale = Math.min(0.006, 1.0 / Math.max(footprint, 1));
+  const mapScale = Math.min(0.01, 2.0 / Math.max(footprint, 1));
   xrPreviewRoot.scale.setScalar(mapScale);
   const center = campusBounds.getCenter(new THREE.Vector3());
-  const target = viewer.clone().addScaledVector(forward, 1.5);
+  const target = viewer.clone().addScaledVector(forward, 2.2).add(new THREE.Vector3(0, -0.55, 0));
   xrPreviewRoot.position.set(
     target.x - center.x * mapScale,
     viewer.y - campusBounds.min.y * mapScale,
     target.z - center.z * mapScale
   );
+  xrPreviewRoot.visible = true;
+  arMapPlaced = true;
+  arPlacementReticle.visible = false;
+}
+
+function placeArMapOnSurface(position) {
+  if (!campusBounds) return;
+  const size = campusBounds.getSize(new THREE.Vector3());
+  const footprint = Math.max(size.x, size.z);
+  const mapScale = Math.min(0.01, 2.0 / Math.max(footprint, 1));
+  const center = campusBounds.getCenter(new THREE.Vector3());
+  xrPreviewRoot.scale.setScalar(mapScale);
+  xrPreviewRoot.rotation.set(0, 0, 0);
+  xrPreviewRoot.position.set(
+    position.x - center.x * mapScale,
+    position.y - campusBounds.min.y * mapScale,
+    position.z - center.z * mapScale
+  );
+  xrPreviewRoot.visible = true;
+  arMapPlaced = true;
+  arPlacementReticle.visible = false;
+  arStatusElement.textContent = "Live camera AR is active. The miniature is placed on a detected surface; it is not aligned to the real campus.";
+  setNotice("Campus map placed on a detected surface. Its position is illustrative, not a real campus location.", "warning");
+}
+
+function updateArPlacement(xrFrame) {
+  if (!xrSession || !xrHitTestSource || arMapPlaced || !xrFrame) return;
+  const hits = xrFrame.getHitTestResults(xrHitTestSource);
+  const hit = hits && hits[0];
+  if (!hit) {
+    arPlacementReticle.visible = false;
+    return;
+  }
+  const pose = hit.getPose(renderer.xr.getReferenceSpace());
+  if (!pose) return;
+  const point = pose.transform.position;
+  const orientation = pose.transform.orientation;
+  arPlacementReticle.position.set(point.x, point.y + 0.015, point.z);
+  arPlacementReticle.quaternion.set(orientation.x, orientation.y, orientation.z, orientation.w)
+    .multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)));
+  arPlacementReticle.visible = true;
 }
 
 function setRouteStatus() {
@@ -623,9 +673,9 @@ function focusCampusOverview() {
 }
 
 function isMappedPrototypeInteriorSegment(fromWaypoint, toWaypoint) {
-  return !!fromWaypoint && !!toWaypoint && MAPPED_PROTOTYPE_INTERIOR_SEGMENTS.has(
-    fromWaypoint.id + "->" + toWaypoint.id
-  );
+  if (!fromWaypoint || !toWaypoint) return false;
+  if (MAPPED_PROTOTYPE_INTERIOR_SEGMENTS.has(fromWaypoint.id + "->" + toWaypoint.id)) return true;
+  return fromWaypoint.id.startsWith("prototype-stair-") && toWaypoint.id.startsWith("prototype-stair-");
 }
 
 function isBlockedByCampus(from, to, allowMappedPrototypeInterior = false) {
@@ -854,8 +904,9 @@ function advanceNavigation(deltaTime) {
   }
 }
 
-function frame() {
+function frame(_time, xrFrame) {
   const deltaTime = clock.getDelta();
+  updateArPlacement(xrFrame);
   advanceNavigation(deltaTime);
   if (routePositionMarker && handoffReady && route.length) {
     const markerPosition = currentPosition || route[0].position;
@@ -1014,14 +1065,19 @@ async function startXrPreview() {
     // mobile browsers can otherwise discard the transient user activation.
     const sessionRequest = requestImmersiveArSession(window, {
       requiredFeatures: ["local"],
-      optionalFeatures: ["local-floor", "dom-overlay"],
+      optionalFeatures: ["local-floor", "dom-overlay", "hit-test"],
       domOverlay: { root: controlPanelElement }
     });
     const session = await sessionRequest;
     xrSession = session;
     session.addEventListener("end", () => {
+      if (xrHitTestSource) xrHitTestSource.cancel();
+      xrHitTestSource = null;
+      arMapPlaced = false;
+      arPlacementReticle.visible = false;
       xrSession = null;
       renderer.xr.enabled = false;
+      xrPreviewRoot.visible = true;
       xrPreviewRoot.position.set(0, 0, 0);
       xrPreviewRoot.rotation.set(0, 0, 0);
       xrPreviewRoot.scale.setScalar(1);
@@ -1042,22 +1098,49 @@ async function startXrPreview() {
     }
     renderer.xr.enabled = true;
     renderer.xr.setReferenceSpaceType(referenceSpaceType);
-    await renderer.xr.setSession(session);
     scene.background = null;
-    placeArMapFromViewer();
+    renderer.setClearColor(0x000000, 0);
+    await renderer.xr.setSession(session);
+    if (renderer.xr.getEnvironmentBlendMode() === "opaque") {
+      throw new Error("This browser started an opaque session without camera passthrough. Open this link in Chrome on an ARCore-supported Android phone with Google Play Services for AR enabled.");
+    }
+    try {
+      const viewerSpace = await session.requestReferenceSpace("viewer");
+      xrHitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+      arMapPlaced = false;
+      xrPreviewRoot.visible = false;
+      session.addEventListener("select", () => {
+        if (arPlacementReticle.visible && !arMapPlaced) {
+          placeArMapOnSurface(arPlacementReticle.position.clone());
+        }
+      });
+      arStatusElement.textContent = "Move the phone slowly to find a floor or table, then tap to place the campus miniature.";
+      setNotice("Scan a nearby surface. Tap when the placement ring appears.", "success");
+    } catch (_) {
+      xrHitTestSource = null;
+      placeArMapFromViewer();
+      arStatusElement.textContent = "Live camera passthrough is active. This browser has no surface placement; the campus miniature is positioned in front of the camera.";
+    }
     controlPanelElement.classList.add("xr-active");
     panelToggleButton.textContent = "RECENTER MAP";
     panelToggleButton.setAttribute("aria-label", "Place the campus map in front of the camera again");
     xrPreviewButton.textContent = "EXIT AR";
     xrPreviewButton.disabled = false;
-    arStatusElement.textContent = "Immersive AR session is active. Model scale and placement are illustrative and not campus-aligned.";
-    setNotice("Immersive AR preview opened. Model scale and placement are illustrative; no surveyed campus origin is available.", "warning");
+    if (xrHitTestSource) {
+      arStatusElement.textContent = "Live camera AR is active. Place the campus miniature on a detected surface; it is not aligned to the real campus.";
+    }
   } catch (error) {
     if (xrSession) {
       try { await xrSession.end(); } catch (_) { /* Session teardown may already be in progress. */ }
     }
     xrSession = null;
+    if (xrHitTestSource) xrHitTestSource.cancel();
+    xrHitTestSource = null;
+    arMapPlaced = false;
+    arPlacementReticle.visible = false;
+    xrPreviewRoot.visible = true;
     renderer.xr.enabled = false;
+    renderer.xr.setReferenceSpaceType("local-floor");
     controlPanelElement.classList.remove("xr-active");
     setPanelExpanded(false);
     scene.background = new THREE.Color(0x081722);
@@ -1078,8 +1161,10 @@ async function checkOptionalAr() {
     xrPreviewButton.disabled = true;
     const messages = {
       "secure-context-required": "Immersive AR requires HTTPS or another secure browser context.",
-      "webxr-unavailable": "This browser does not expose WebXR immersive AR.",
-      "device-or-browser-unsupported": "This browser or device does not support immersive AR.",
+      "webxr-unavailable": "This browser does not expose WebXR. On Android, open the QR link in Chrome and make sure Google Play Services for AR is installed and enabled.",
+      "device-or-browser-unsupported": /iPhone|iPad|iPod/i.test(navigator.userAgent)
+        ? "This iPhone browser does not provide WebXR immersive AR. The virtual campus route still works in the browser."
+        : "This browser or phone does not offer immersive AR. Use Chrome on an ARCore-supported Android phone with Google Play Services for AR installed and enabled.",
       "capability-check-failed": "Immersive AR capability could not be checked: " +
         (capability.error ? capability.error.message : "unknown error") + "."
     };
@@ -1088,7 +1173,7 @@ async function checkOptionalAr() {
     return;
   }
   refreshArControl();
-  arStatusElement.textContent = "Immersive AR preview is available. Model placement is illustrative and not campus-aligned.";
+  arStatusElement.textContent = "Immersive AR is available. The campus will be shown as a miniature; no physical campus alignment is available.";
 }
 
 async function initialize() {
@@ -1129,8 +1214,8 @@ async function initialize() {
 
   try {
     const [routeResponse, obstaclesResponse] = await Promise.all([
-      fetch("./route-data.json?v=4.9-mobile-interior-wayfinding"),
-      fetch("./campus-building-obstacles.json?v=4.9-mobile-interior-wayfinding")
+      fetch("./route-data.json?v=5.0-surface-placement-stair-routes"),
+      fetch("./campus-building-obstacles.json?v=5.0-surface-placement-stair-routes")
     ]);
     if (!routeResponse.ok) throw new Error("Could not load the campus route catalogue (" + routeResponse.status + ").");
     if (!obstaclesResponse.ok) throw new Error("Could not load the imported campus building mesh (" + obstaclesResponse.status + ").");
@@ -1195,8 +1280,8 @@ async function initialize() {
   try {
     if (!routeData) {
       const [routeResponse, obstaclesResponse] = await Promise.all([
-        fetch("./route-data.json?v=4.9-mobile-interior-wayfinding"),
-        fetch("./campus-building-obstacles.json?v=4.9-mobile-interior-wayfinding")
+        fetch("./route-data.json?v=5.0-surface-placement-stair-routes"),
+        fetch("./campus-building-obstacles.json?v=5.0-surface-placement-stair-routes")
       ]);
       if (!routeResponse.ok) throw new Error("Could not load the campus route catalogue (" + routeResponse.status + ").");
       if (!obstaclesResponse.ok) throw new Error("Could not load the imported campus building mesh (" + obstaclesResponse.status + ").");

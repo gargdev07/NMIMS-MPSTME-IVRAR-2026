@@ -28,6 +28,7 @@ const demoControllerSource = await readFile(
   "utf8"
 );
 const phoneClientSource = await readFile(new URL("./virtual-campus.js", import.meta.url), "utf8");
+const deployedWebXrFiles = ["index.html", "virtual-campus.js", "route-data.json", "route-graph.js", "xr-support.js", "representative-interior.js", "styles.css", "campus-building-obstacles.json"];
 const navigationSessionSource = await readFile(
   new URL("../Integrated/R057NavigationSession.cs", import.meta.url),
   "utf8"
@@ -105,7 +106,8 @@ function intersectsBuildingMesh(point, margin = 0.3) {
 function firstUnapprovedRouteObstruction(route) {
   for (let index = 1; index < route.waypoints.length; index++) {
     const from = route.waypoints[index - 1], to = route.waypoints[index];
-    const mappedPrototypeInterior = mappedPrototypeInteriorSegments.has(`${from.id}->${to.id}`);
+    const mappedPrototypeInterior = mappedPrototypeInteriorSegments.has(`${from.id}->${to.id}`) ||
+      (from.id.startsWith("prototype-stair-") && to.id.startsWith("prototype-stair-"));
     const a = from.position, b = to.position;
     const length = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
     const samples = Math.max(1, Math.ceil(length / 0.25));
@@ -134,6 +136,15 @@ test("the Unity master scene loads the whole-campus graph for its actual route p
   assert.match(campusProviderSource, /TryFindShortestPath\(data\.campusPrototypeGraph\.startNodeId, destinationNodeId/);
   assert.doesNotMatch(campusProviderSource, /representativeInterior\.TryBuildRoute/);
   assert.match(masterSceneSource, /showRouteMarkers: 1/);
+});
+
+test("GitHub Pages serves the same phone client, shortest-path graph and AR runtime as the Unity source", async () => {
+  const deployedRoot = new URL("../../../../docs/webxr/", import.meta.url);
+  for (const file of deployedWebXrFiles) {
+    const source = await readFile(new URL(`./${file}`, import.meta.url));
+    const deployed = await readFile(new URL(file, deployedRoot));
+    assert.deepEqual(deployed, source, `Hosted WebXR asset ${file} must match the Unity source copy.`);
+  }
 });
 
 test("whole-campus routes use the imported walk surface and distinct exterior approaches", () => {
@@ -288,6 +299,30 @@ test("every mobile destination route clears building geometry and prototype entr
   assert.match(phoneClientSource, /allowMappedPrototypeInterior && candidate\.id\.includes\("Building_23990"\)/);
   assert.match(phoneClientSource, /isMappedPrototypeInteriorSegment\(previousWaypoint, target\)/);
   assert.match(phoneClientSource, /Campus route · prototype interior mapped/);
+});
+
+test("the lab route follows each modeled stair tread instead of cutting across the stair flights", () => {
+  const graph = routeData.campusPrototypeGraph;
+  const nodes = validateNavigationGraph(graph);
+  const expectedTreads = [
+    ...Array.from({ length: 8 }, (_, index) => `prototype-stair-ground-tread-${String(index + 1).padStart(2, "0")}`),
+    ...Array.from({ length: 8 }, (_, index) => `prototype-stair-upper-tread-${String(index + 1).padStart(2, "0")}`)
+  ];
+  for (const id of expectedTreads) {
+    assert.equal(nodes.get(id)?.kind, "prototype-stair-tread-approach", `Missing stair tread waypoint ${id}`);
+  }
+  for (const destinationId of ["lab-101", "lab-102", "lab-103"]) {
+    const destination = routeData.destinations.find(item => item.id === destinationId);
+    const route = findShortestPath(graph, graph.startNodeId, destination.campusNodeId);
+    assert.ok(expectedTreads.every(id => route.nodeIds.includes(id)), `${destinationId} must follow all modeled treads`);
+    for (let index = 1; index < route.nodeIds.length; index++) {
+      const from = nodes.get(route.nodeIds[index - 1]);
+      const to = nodes.get(route.nodeIds[index]);
+      assert.ok(graph.edges.some(edge => edge.walkable &&
+        ((edge.from === from.id && edge.to === to.id) || (edge.from === to.id && edge.to === from.id))),
+        `Route segment ${from.id} -> ${to.id} must be an encoded walkable edge`);
+    }
+  }
 });
 
 test("facility assignments use building entrances and parking ends on the modeled path", () => {
@@ -553,7 +588,7 @@ test("campus route checks for a clear side step before stopping at model geometr
   assert.match(script, /function isBlockedByProjectedCampusMeshes\(from, to, allowMappedPrototypeInterior = false\)/);
   assert.match(script, /function pointInObstacleTriangle\(x, z, triangle\)/);
   assert.match(script, /function pointToObstacleEdgeDistance\(x, z, ax, az, bx, bz\)/);
-  assert.match(script, /campus-building-obstacles\.json\?v=4\.9-mobile-interior-wayfinding/);
+  assert.match(script, /campus-building-obstacles\.json\?v=5\.0-surface-placement-stair-routes/);
   assert.doesNotMatch(script, /isBlockedByNamedBuildingBounds/);
   assert.match(script, /function findCampusObstacleDetour\(from, target\)/);
   assert.match(script, /if \(!isBlockedByCampus\(from, candidate\.point\)\) return candidate\.point/);
@@ -586,16 +621,22 @@ test("immersive AR uses a floor-relative reference space when the phone provides
   const start = script.indexOf("async function startXrPreview()");
   const end = script.indexOf("async function checkOptionalAr()", start);
   const handler = script.slice(start, end);
-  assert.match(handler, /optionalFeatures:\s*\["local-floor",\s*"dom-overlay"\]/);
+  assert.match(handler, /optionalFeatures:\s*\["local-floor",\s*"dom-overlay",\s*"hit-test"\]/);
   assert.match(handler, /await session\.requestReferenceSpace\("local-floor"\)/);
   assert.match(handler, /renderer\.xr\.setReferenceSpaceType\(referenceSpaceType\)/);
   assert.match(handler, /root:\s*controlPanelElement/);
   assert.match(script, /function placeArMapFromViewer\(\)/);
-  assert.match(script, /const mapScale = Math\.min\(0\.006, 1\.0 \/ Math\.max\(footprint, 1\)\)/);
+  assert.match(script, /const mapScale = Math\.min\(0\.01, 2\.0 \/ Math\.max\(footprint, 1\)\)/);
   assert.match(script, /viewer\.y - campusBounds\.min\.y \* mapScale/);
   assert.match(script, /target\.x - center\.x \* mapScale/);
   assert.match(script, /panelToggleButton\.textContent = "RECENTER MAP"/);
   assert.match(script, /placeArMapFromViewer\(\);\s*setToast\("Campus route map centered in front of the camera"\)/);
+  assert.match(handler, /renderer\.setClearColor\(0x000000, 0\)/);
+  assert.match(handler, /renderer\.xr\.getEnvironmentBlendMode\(\)/);
+  assert.match(script, /session\.requestHitTestSource\(\{ space: viewerSpace \}\)/);
+  assert.match(script, /function placeArMapOnSurface\(position\)/);
+  assert.match(script, /depthTest: true/);
+  assert.match(script, /Use Chrome on an ARCore-supported Android phone/);
 });
 
 test("virtual route camera follows a smooth horizontal look-ahead without pitching into the pavement", async () => {
