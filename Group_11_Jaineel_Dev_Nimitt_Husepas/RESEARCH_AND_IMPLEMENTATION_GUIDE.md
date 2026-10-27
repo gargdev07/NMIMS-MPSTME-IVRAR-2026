@@ -76,7 +76,7 @@ S021      Nimitt Jain       Sustainability & Usability Analyst         kiosk_han
 ### 2.3 Nimitt Jain (S021) - Sustainability & Usability Analyst
 - Lead responsibility for technoeconomic operational parity modeling in `telemetry/kiosk_analytics_roi_eval.py`.
 - Implementation of statistical benchmarking and publication figure generation in `telemetry/generate_paper_figures.py`.
-- Execution of comparative trial evaluations ($N = 50$) analyzing paper sheets eliminated, reception hours reclaimed, and System Usability Scale (SUS) scores.
+- Preparation and execution of comparative trial evaluations (protocol in `docs/S021_Usability_Study_Protocol.md`; the $N = 50$ figures in section 4.2 are simulated) analyzing paper sheets eliminated, reception hours reclaimed, and System Usability Scale (SUS) scores.
 - Git Branch: `feat/s021-sustainability-usabi`
 
 ---
@@ -117,7 +117,9 @@ Campus_Kiosk_Handoff_Master
 - **Alternative Hypothesis ($H_1$):** Hybrid WebXR handoff significantly compresses transit time and reduces wayfinding wrong turns:
   $$\mu_{\text{Transit, AR}} < \mu_{\text{Transit, Paper}}, \quad p < 0.001$$
 
-### 4.2 Empirical Results Summary ($N = 50$ Trials)
+### 4.2 Reference Results Summary (simulated, N = 50 scenario)
+
+> **Simulated reference values - not experimental results.** The numbers in this section were produced by the starter scripts (`telemetry/generate_paper_figures.py`, `SIMULATED_*.csv`) and by an assumed-input scenario model. No participants have been tested yet. They show the expected layout of the final tables and must be replaced by real trial data (N >= 10) before any use in the dossier, video or paper. Honest status of the build: see `README.md`, section *Current Implementation Status*.
 
 | Metric | Traditional Paper Map | Hybrid AR Kiosk Handoff | Delta / Significance |
 |---|---|---|---|

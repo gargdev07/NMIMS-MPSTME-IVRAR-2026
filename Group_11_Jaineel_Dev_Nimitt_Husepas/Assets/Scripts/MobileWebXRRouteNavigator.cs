@@ -47,8 +47,10 @@ public class MobileWebXRRouteNavigator : MonoBehaviour
     private Vector3 _lastUserPos;
 
     // Student Technical Boundaries:
-    // TODO [S014 - Dev Garg]: Implement WebXR session camera pose update and floating directional arrow projection.
-    // TODO [S021 - Nimitt Jain]: Implement path deviation tracking, wrong-turn counting, and CSV telemetry serialization.
+    // [S014 - Dev Garg]  Camera pose update and the floating, SLERP-smoothed arrow are implemented in S014WebXRPoseAdapter.cs
+    //                    and S014DirectionArrow.cs; waypoint progress in S014NavigationController.cs.
+    // [S021 - Nimitt Jain] Path deviation tracking, wrong-turn counting and CSV serialisation are implemented in
+    //                    S021NavigationAnalytics.cs (see docs/S021_Navigation_Analytics.md).
 
     void Start()
     {
@@ -77,7 +79,7 @@ public class MobileWebXRRouteNavigator : MonoBehaviour
             totalDistanceWalkedMeters += stepDist;
             _lastUserPos = currentPos;
 
-            // TODO [S021 - Nimitt Jain]: Calculate perpendicular distance from currentPos to planned waypoint path segment.
+            // Perpendicular distance to the planned segment is computed by S021NavigationAnalytics.cs.
             if (currentTargetWaypointIndex < activeRouteWaypoints.Count)
             {
                 float distToTarget = Vector3.Distance(currentPos, activeRouteWaypoints[currentTargetWaypointIndex].positionBIM);
@@ -102,7 +104,7 @@ public class MobileWebXRRouteNavigator : MonoBehaviour
             return;
         }
 
-        // TODO [S014 - Dev Garg]: Detect arrival at waypoint and animate turn indicator toward next target.
+        // Arrival at a waypoint: simple radius check below; the smoothed arrow orientation is handled in S014DirectionArrow.cs.
         float dist = Vector3.Distance(transform.position, activeRouteWaypoints[currentTargetWaypointIndex].positionBIM);
         if (dist <= waypointArrivalThresholdMeters)
         {
