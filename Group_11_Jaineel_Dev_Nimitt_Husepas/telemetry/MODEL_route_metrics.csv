@@ -1,0 +1,97 @@
+id,display_name,floor_label,floor_index,stairs_walkable,stairs_route_m,stairs_waypoints,lobby_to_lift_m,lift_ride_m_vertical,lift_to_room_m,lift_route_total_m,lift_ride_s
+flg-cafeteria,"Cafeteria",LG,0,True,76.7,31,32.2,4.0,25.6,57.8,2.5
+flg-faculty-dining,"Faculty Dining",LG,0,True,99.9,29,32.2,4.0,22.9,55.1,2.5
+flg-mini-auditorium,"Mini Auditorium",LG,0,True,102.9,29,32.2,4.0,48.0,80.2,2.5
+flg-pantry,"Pantry",LG,0,True,78.6,31,32.2,4.0,27.5,59.6,2.5
+flg-services,"Services",LG,0,True,102.4,29,32.2,4.0,27.5,59.6,2.5
+flg-maintenance-room,"Maintenance Room",LG,0,True,104.6,29,32.2,4.0,47.6,79.8,2.5
+flg-electrical-panel-room,"Electrical Panel Room",LG,0,True,88.7,29,32.2,4.0,35.3,67.4,2.5
+flg-ahu,"AHU",LG,0,True,106.9,29,32.2,4.0,35.0,67.1,2.5
+flg-e.-cr-lg1,"E. CR LG1",LG,0,True,109.4,33,32.2,4.0,47.6,79.8,2.5
+fg-reception,"Reception",G,1,True,47.8,13,32.2,0.0,25.6,57.7,2.5
+fg-admin-department,"Admin Department",G,1,True,46.5,12,32.2,0.0,22.9,55.0,2.5
+fg-conference-room,"Conference Room",G,1,True,74.0,13,32.2,0.0,51.2,83.4,2.5
+fg-exam-hall-1,"Exam Hall 1",G,1,True,49.6,13,32.2,0.0,27.4,59.6,2.5
+fg-exam-hall-2,"Exam Hall 2",G,1,True,51.1,13,32.2,0.0,27.4,59.6,2.5
+fg-exam-hall-3,"Exam Hall 3",G,1,True,76.1,13,32.2,0.0,53.3,85.4,2.5
+fg-server-room,"Server Room",G,1,True,59.8,13,32.2,0.0,37.0,69.1,2.5
+fg-ibms-room,"IBMS Room",G,1,True,60.9,15,32.2,0.0,37.3,69.4,2.5
+fg-amu-room-1,"AMU Room 1",G,1,True,77.2,15,32.2,0.0,53.6,85.7,2.5
+fg-e.-cr-g1,"E. CR G1",G,1,True,70.8,13,32.2,0.0,48.0,80.1,2.5
+fg-e.-cr-g2,"E. CR G2",G,1,True,66.9,15,32.2,0.0,43.3,75.4,2.5
+fg-e.-cr-g3,"E. CR G3",G,1,True,75.9,17,32.2,0.0,52.3,84.5,2.5
+f1-dean-office,"Dean Office",1,2,True,76.6,31,32.2,4.0,25.6,57.7,2.5
+f1-hardware-lab-1,"Hardware Lab 1",1,2,True,99.8,29,32.2,4.0,22.9,55.0,2.5
+f1-hardware-lab-2,"Hardware Lab 2",1,2,True,102.8,31,32.2,4.0,51.2,83.4,2.5
+f1-hardware-lab-3,"Hardware Lab 3",1,2,True,78.5,31,32.2,4.0,27.4,59.6,2.5
+f1-faculty-area-101,"Faculty Area 101",1,2,True,104.4,29,32.2,4.0,27.4,59.6,2.5
+f1-faculty-area-102,"Faculty Area 102",1,2,True,104.9,31,32.2,4.0,53.3,85.4,2.5
+f1-e.-cr-101,"E. CR 101",1,2,True,88.6,31,32.2,4.0,37.0,69.1,2.5
+f1-e.-cr-104,"E. CR 104",1,2,True,114.2,31,32.2,4.0,37.3,69.4,2.5
+f1-e.-cl-101,"E. CL 101",1,2,True,117.7,35,32.2,4.0,53.6,85.7,2.5
+f1-e.-cr-105,"E. CR 105",1,2,True,99.6,31,32.2,4.0,48.0,80.1,2.5
+f2-physics-lab,"Physics Lab",2,3,True,96.1,41,32.2,8.0,25.6,57.7,2.7
+f2-faculty-area-201,"Faculty Area 201",2,3,True,119.3,39,32.2,8.0,22.9,55.0,2.7
+f2-faculty-area-202,"Faculty Area 202",2,3,True,122.3,41,32.2,8.0,51.2,83.4,2.7
+f2-e.-cr-201,"E. CR 201",2,3,True,98.0,41,32.2,8.0,27.4,59.6,2.7
+f2-e.-cr-203,"E. CR 203",2,3,True,123.8,39,32.2,8.0,27.4,59.6,2.7
+f2-e.-cr-204,"E. CR 204",2,3,True,124.4,41,32.2,8.0,53.3,85.4,2.7
+f2-e.-cc-201,"E. CC 201",2,3,True,108.1,41,32.2,8.0,37.0,69.1,2.7
+f2-e.-tr-201,"E. TR 201",2,3,True,133.7,41,32.2,8.0,37.3,69.4,2.7
+f2-e.-cr-206,"E. CR 206",2,3,True,137.1,45,32.2,8.0,53.6,85.7,2.7
+f3-girls-common-room,"Girls Common Room",3,4,True,115.5,51,32.2,12.0,25.6,57.7,4.0
+f3-faculty-area-301,"Faculty Area 301",3,4,True,138.8,49,32.2,12.0,22.9,55.0,4.0
+f3-faculty-area-302,"Faculty Area 302",3,4,True,141.8,51,32.2,12.0,51.2,83.4,4.0
+f3-e.-cr-301,"E. CR 301",3,4,True,117.4,51,32.2,12.0,27.4,59.6,4.0
+f3-e.-cr-304,"E. CR 304",3,4,True,143.3,49,32.2,12.0,27.4,59.6,4.0
+f3-e.-cr-305,"E. CR 305",3,4,True,143.8,51,32.2,12.0,53.3,85.4,4.0
+f3-e.-cc-301,"E. CC 301",3,4,True,127.5,51,32.2,12.0,37.0,69.1,4.0
+f3-e.-tr-301,"E. TR 301",3,4,True,153.1,51,32.2,12.0,37.3,69.4,4.0
+f3-e.-cr-306,"E. CR 306",3,4,True,156.6,55,32.2,12.0,53.6,85.7,4.0
+f4-de-lab,"DE Lab",4,5,True,135.0,61,32.2,16.0,25.6,57.7,5.3
+f4-es-lab,"ES Lab",4,5,True,158.2,59,32.2,16.0,22.9,55.0,5.3
+f4-faculty-area-401,"Faculty Area 401",4,5,True,161.2,61,32.2,16.0,51.2,83.4,5.3
+f4-faculty-area-402,"Faculty Area 402",4,5,True,136.9,61,32.2,16.0,27.4,59.6,5.3
+f4-e.-cr-401,"E. CR 401",4,5,True,162.8,59,32.2,16.0,27.4,59.6,5.3
+f4-e.-cr-403,"E. CR 403",4,5,True,163.3,61,32.2,16.0,53.3,85.4,5.3
+f4-e.-cl-401,"E. CL 401",4,5,True,147.0,61,32.2,16.0,37.0,69.1,5.3
+f4-e.-cl-405,"E. CL 405",4,5,True,172.6,61,32.2,16.0,37.3,69.4,5.3
+f4-e.-cr-405,"E. CR 405",4,5,True,176.0,65,32.2,16.0,53.6,85.7,5.3
+f5-boys-common-room,"Boys Common Room",5,6,True,154.5,71,32.2,20.0,25.6,57.7,6.7
+f5-faculty-area-501,"Faculty Area 501",5,6,True,177.7,69,32.2,20.0,22.9,55.0,6.7
+f5-faculty-area-502,"Faculty Area 502",5,6,True,180.7,71,32.2,20.0,51.2,83.4,6.7
+f5-e.-cr-501,"E. CR 501",5,6,True,156.3,71,32.2,20.0,27.4,59.6,6.7
+f5-e.-cr-504,"E. CR 504",5,6,True,182.2,69,32.2,20.0,27.4,59.6,6.7
+f5-e.-cl-501,"E. CL 501",5,6,True,182.8,71,32.2,20.0,53.3,85.4,6.7
+f5-e.-cl-503,"E. CL 503",5,6,True,166.5,71,32.2,20.0,37.0,69.1,6.7
+f5-e.-tr-501,"E. TR 501",5,6,True,192.1,71,32.2,20.0,37.3,69.4,6.7
+f5-e.-cr-506,"E. CR 506",5,6,True,195.5,75,32.2,20.0,53.6,85.7,6.7
+f6-ai-lab,"AI Lab",6,7,True,173.9,81,32.2,24.0,25.6,57.7,8.0
+f6-robotics-lab,"Robotics Lab",6,7,True,197.1,79,32.2,24.0,22.9,55.0,8.0
+f6-basic-communication-lab,"Basic Communication Lab",6,7,True,200.1,81,32.2,24.0,51.2,83.4,8.0
+f6-advance-communication-lab,"Advance Communication Lab",6,7,True,175.8,81,32.2,24.0,27.4,59.6,8.0
+f6-faculty-area-601,"Faculty Area 601",6,7,True,201.7,79,32.2,24.0,27.4,59.6,8.0
+f6-faculty-area-602,"Faculty Area 602",6,7,True,202.2,81,32.2,24.0,53.3,85.4,8.0
+f6-e.-cr-601,"E. CR 601",6,7,True,185.9,81,32.2,24.0,37.0,69.1,8.0
+f6-e.-cr-603,"E. CR 603",6,7,True,211.5,81,32.2,24.0,37.3,69.4,8.0
+f6-e.-cl-601,"E. CL 601",6,7,True,215.0,85,32.2,24.0,53.6,85.7,8.0
+f6-e.-tr-601,"E. TR 601",6,7,True,196.9,81,32.2,24.0,48.0,80.1,8.0
+f7-library,"Library",7,8,True,193.4,91,32.2,28.0,25.6,57.7,8.0
+f7-ar-vr-lab,"AR VR Lab",7,8,True,216.6,90,32.2,28.0,22.9,55.0,8.0
+f7-faculty-area-701,"Faculty Area 701",7,8,True,219.6,92,32.2,28.0,51.2,83.4,8.0
+f7-e.-cr-701,"E. CR 701",7,8,True,195.3,91,32.2,28.0,27.4,59.6,8.0
+f7-e.-cr-702,"E. CR 702",7,8,True,221.2,91,32.2,28.0,27.4,59.6,8.0
+f7-e.-cl-701,"E. CL 701",7,8,True,221.7,93,32.2,28.0,53.3,85.4,8.0
+f7-e.-cl-705,"E. CL 705",7,8,True,205.4,91,32.2,28.0,37.0,69.1,8.0
+f7-e.-cc-701,"E. CC 701",7,8,True,231.0,91,32.2,28.0,37.3,69.4,8.0
+f7-e.-cc-702,"E. CC 702",7,8,True,234.4,95,32.2,28.0,53.6,85.7,8.0
+f8-placement-office,"Placement Office",8,9,True,212.9,101,32.2,32.0,25.6,57.7,8.0
+f8-additive-manufacturing-lab,"Additive Manufacturing Lab",8,9,True,236.1,99,32.2,32.0,22.9,55.0,8.0
+f8-hydraulics-lab,"Hydraulics Lab",8,9,True,239.1,101,32.2,32.0,51.2,83.4,8.0
+f8-automation-lab,"Automation Lab",8,9,True,214.7,101,32.2,32.0,27.4,59.6,8.0
+f8-pneumatic-lab,"Pneumatic Lab",8,9,True,240.6,99,32.2,32.0,27.4,59.6,8.0
+f8-sensor-iot-lab,"Sensor IOT Lab",8,9,True,241.1,101,32.2,32.0,53.3,85.4,8.0
+f8-v.c.-room-1,"V.C. Room 1",8,9,True,224.8,101,32.2,32.0,37.0,69.1,8.0
+f8-v.c.-room-2,"V.C. Room 2",8,9,True,250.5,101,32.2,32.0,37.3,69.4,8.0
+f8-e.-cc-801,"E. CC 801",8,9,True,253.9,105,32.2,32.0,53.6,85.7,8.0
+f8-e.-cl-801,"E. CL 801",8,9,True,235.8,101,32.2,32.0,48.0,80.1,8.0
