@@ -33,7 +33,7 @@ The team built the system as a **standalone VR campus walkthrough for Meta Quest
 | Automated route test (every room, stairs and lift) | TESTED, results in [`docs/S021_Validation_Results.md`](docs/S021_Validation_Results.md) |
 | Encrypted hand-off token, 45 s lease, multi-floor A* | IMPLEMENTED, TESTED ([`docs/R057_Smart_Kiosk_Design.md`](docs/R057_Smart_Kiosk_Design.md)) |
 | QR scanned by a real phone | **SIMULATED** in the Quest build (visual stand-in) |
-| Usability study with real participants (N >= 10), SUS, NASA-TLX | **NOT YET DONE**, protocol in [`docs/S021_Usability_Study_Protocol.md`](docs/S021_Usability_Study_Protocol.md) |
+| Follow-up usability study, N = 10 on 28-Oct-2026 (SUS mean 90.5, raw NASA-TLX 10.75, 10 of 10 found the room) | DONE with a weaker design than planned: 4 of the 10 are team members, one uncontrolled session each, no timing data; see [`docs/S021_Study_Results.md`](docs/S021_Study_Results.md) and the protocol in [`docs/S021_Usability_Study_Protocol.md`](docs/S021_Usability_Study_Protocol.md) |
 
 ```mermaid
 flowchart LR
