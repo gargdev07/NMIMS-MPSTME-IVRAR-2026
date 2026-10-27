@@ -1,0 +1,11 @@
+participant_id,condition,order,destination_id,task_completion_time_s,wrong_turns,sus_q1,sus_q2,sus_q3,sus_q4,sus_q5,sus_q6,sus_q7,sus_q8,sus_q9,sus_q10,tlx_mental,tlx_physical,tlx_temporal,tlx_performance,tlx_effort,tlx_frustration,ssq_total,route_taken,found_room,dizziness,team_member,comment
+P01,OVERALL,,,,,4,1,5,1,5,1,5,1,5,1,25,20,15,0,15,0,,STAIRS,YES,NO,yes,
+P02,OVERALL,,,,,5,1,5,2,4,1,5,1,5,1,10,5,15,0,25,0,,BOTH,YES,NO,yes,
+P03,OVERALL,,,,,5,2,5,1,5,1,5,1,5,1,35,25,20,5,20,5,,STAIRS,YES,NO,yes,
+P04,OVERALL,,,,,4,2,4,2,4,1,5,2,5,1,10,0,15,5,20,0,,LIFT,YES,NO,yes,
+P05,OVERALL,,,,,5,1,5,1,5,1,5,1,5,1,0,0,0,0,0,0,,LIFT,YES,NO,no,Can add closing and opening doors for the lift to make it look more realistic
+P06,OVERALL,,,,,5,2,2,2,4,2,5,1,5,1,10,5,15,10,5,0,,BOTH,YES,NO,no,Can add more elements to the campus like  add proper library to enter to make it more look realistic.
+P07,OVERALL,,,,,5,2,4,2,4,4,5,2,4,2,20,25,10,10,25,5,,LIFT,YES,NO,no,
+P08,OVERALL,,,,,5,1,5,1,5,1,5,1,5,1,0,0,0,10,5,5,,LIFT,YES,NO,no,
+P09,OVERALL,,,,,5,1,5,2,4,1,2,1,5,1,25,15,20,25,20,15,,BOTH,YES,A LITTLE,no,
+P10,OVERALL,,,,,5,1,4,2,5,2,4,2,5,2,10,5,0,20,30,10,,BOTH,YES,A LITTLE,no,

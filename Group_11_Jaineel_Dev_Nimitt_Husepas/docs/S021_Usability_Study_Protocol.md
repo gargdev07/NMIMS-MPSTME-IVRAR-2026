@@ -3,7 +3,7 @@
 **Role:** Sustainability & Usability Analyst (Nimitt Jain)  |  **Branch:** `feat/s021-sustainability-usabi`
 **Purpose:** a ready-to-run protocol for the human-in-the-loop evaluation required by the course (dossier Section 4: real volunteers, **N >= 10**, SUS plus NASA-TLX, consent forms, anonymised IDs).
 
-> **Status: protocol only.** No participant has been tested yet, so this repository contains **no study results**. The numbers in the starter files (`SIMULATED_*.csv`, `docs/figures/figure*.png`) are simulated and must not be reported as results.
+> **Status.** This is the planned protocol. A follow-up study with 10 participants was run on 28-Oct-2026 with a **weaker design than planned** (4 of the 10 are team members, one uncontrolled session each, questionnaires and consent collected afterwards); its data and limits are in `docs/S021_Study_Results.md`. The numbers in the starter files (`SIMULATED_*.csv`, `docs/figures/figure1`-`figure3`) are simulated and must not be reported as results.
 
 ---
 

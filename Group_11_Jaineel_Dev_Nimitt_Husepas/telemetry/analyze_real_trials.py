@@ -129,6 +129,11 @@ def welch_test(a, b):
     return {"t": t, "df": df, "p": t_two_sided_p(t, df), "d": (st.mean(a) - st.mean(b)) / sp}
 
 
+def _opt(v):
+    """empty cell = not measured (never guessed)"""
+    return None if v is None or str(v).strip() == "" else float(v)
+
+
 def load(path):
     rows = []
     with open(path, newline="", encoding="utf-8") as f:
@@ -139,14 +144,19 @@ def load(path):
             tlx = [float(r[c]) for c in TLX_COLS]
             rows.append({
                 "pid": r["participant_id"], "cond": r["condition"],
-                "time": float(r["task_completion_time_s"]), "wrong": float(r["wrong_turns"]),
+                "time": _opt(r.get("task_completion_time_s")), "wrong": _opt(r.get("wrong_turns")),
                 "sus": sus_score(items), "tlx": tlx_raw(tlx),
+                "sub": [float(v) for v in tlx], "extra": r,
             })
     return rows
 
 
-def main(path):
+def main(path, flt=None):
     rows = load(path)
+    if flt:
+        col, val = flt.split("=", 1)
+        rows = [r for r in rows if str(r["extra"].get(col, "")).strip().lower() == val.strip().lower()]
+        print("filter %s = %s -> %d rows" % (col, val, len(rows)))
     pids = {r["pid"] for r in rows}
     print("participants (N):", len(pids), "  rows:", len(rows))
     if len(pids) < MIN_N:
@@ -157,7 +167,11 @@ def main(path):
     for cond, rs in sorted(by.items()):
         print("\nCondition:", cond)
         for label, key in (("SUS (0-100)", "sus"), ("NASA-TLX raw (0-100)", "tlx"), ("Completion time (s)", "time"), ("Wrong turns", "wrong")):
-            d = describe([r[key] for r in rs])
+            vals = [r[key] for r in rs if r[key] is not None]
+            if not vals:
+                print("  %-22s not measured (no values in the CSV)" % label)
+                continue
+            d = describe(vals)
             print("  %-22s N=%d mean=%.2f SD=%.2f median=%.2f 95%%CI=+/-%.2f" % (label, d["n"], d["mean"], d["sd"], d["median"], d["ci95"]))
     conds = sorted(by)
     if len(conds) == 2:
@@ -165,6 +179,9 @@ def main(path):
         same = sorted(r["pid"] for r in a) == sorted(r["pid"] for r in b)
         print("\nComparison %s vs %s (%s):" % (conds[0], conds[1], "paired, same participants" if same else "independent groups"))
         for label, key in (("SUS", "sus"), ("NASA-TLX", "tlx"), ("Completion time", "time"), ("Wrong turns", "wrong")):
+            if any(r[key] is None for r in a + b):
+                print("  %-16s skipped (not measured for everyone)" % label)
+                continue
             if same:
                 av = [r[key] for r in sorted(a, key=lambda r: r["pid"])]
                 bv = [r[key] for r in sorted(b, key=lambda r: r["pid"])]
@@ -194,7 +211,10 @@ def main(path):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
+    args = [a for a in sys.argv[1:] if not a.startswith("--filter=")]
+    flt = next((a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--filter=")), None)
+    if len(args) != 1:
         print(__doc__)
+        print("Optional: --filter=<column>=<value>   e.g. --filter=team_member=no")
         sys.exit(2)
-    main(sys.argv[1])
+    main(args[0], flt)
