@@ -112,9 +112,9 @@ The platform comprises five interconnected software modules:
 
 ## Project Demonstration & Academic Showcase (LinkedIn)
 
-[![Watch Video Demonstration on LinkedIn](docs/figures/video_poster.png)](https://www.linkedin.com/)
+[![Watch Video Demonstration on LinkedIn](docs/figures/video_poster.png)](https://lnkd.in/p/dYdXPgD2)
 
-* **Video Demonstration:** 3-4 minute technical video on LinkedIn *(post not published yet; the link above is a placeholder and `linkedin_url` in `docs/TEAM_ROSTER.json` is still `PENDING_SUBMISSION`)*
+* **Video Demonstration:** [Watch the 3-4 minute technical video on LinkedIn](https://lnkd.in/p/dYdXPgD2)
 * **Student Presenters:** **Jaineel Shah** (R057), **Dev Garg** (S014), **Nimitt Jain** (S021), **Husepas Marfatia** (J032)
 * **Academic Institutional Tags:** SVKM's NMIMS MPSTME | Academic Directorate | Immersive VR/AR Technologies
 * **Submission Protocol:** Record a 3-4 minute technical video (problem, running build, state machine and one equation, real user-test results, each member's reflection; every member appears and speaks). Publish it natively on LinkedIn, tagging MPSTME and Dr. Sunny Nanade and linking this folder. Insert your live post URL in `docs/TEAM_ROSTER.json` under `"linkedin_url"`, and submit a pull request to update this project dossier and the cohort dashboard.
